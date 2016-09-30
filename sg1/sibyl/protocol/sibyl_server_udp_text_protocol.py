@@ -54,5 +54,26 @@ class SibylServerUdpTextProtocol(DatagramProtocol):
                 parameters, as Twisted calls it.
 
         """
-        pass
+        result = self.openSesame(datagram)
+        answer = self.sibylServerProxy.generateResponse(result[0])
+        datagram2 = result[1] + ": " + answer + chr(13) + chr(10)
+        self.transport.write(datagram2.encode(), host_port)
+    
+    def openSesame(self, datagram):
+        """Extract the text part from a datagram
+        Args :
+            datagram (bytes)
+        """
+        time = ""
+        datagram = datagram.decode()
+        i = 0
+        while datagram[i] != ":" :
+            time += datagram[i]
+            i += 1
+        i += 2
+        text = ""
+        while ord(datagram[i]) != 13 :
+            text += datagram[i]
+            i += 1
+        return (text, time)
     

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
+from time import time
+import math as m
 
 
 class SibylClientUdpTextProtocol(DatagramProtocol):
@@ -70,7 +72,9 @@ class SibylClientUdpTextProtocol(DatagramProtocol):
             as the controller calls it.
 
         """
-        pass
+        datagram = str(m.floor(time())) + ": " + line + chr(13) + chr(10)
+        self.transport.write(datagram.encode(), (self.serverAddress, self.serverPort))
+        
 
     def datagramReceived(self, datagram, host_port):
         """Called by Twisted whenever a datagram is received
@@ -86,4 +90,20 @@ class SibylClientUdpTextProtocol(DatagramProtocol):
             as Twisted calls it.
 
         """
-        pass
+        self.clientProxy.responseReceived(self.openSesame(datagram))
+    
+    def openSesame(self, datagram):
+        """Extract the text part from a datagram
+        Args :
+            datagram (bytes)
+        """
+        datagram = datagram.decode()
+        i = 0
+        while datagram[i] != " " :
+            i += 1
+        i += 1
+        text = ""
+        while ord(datagram[i]) != 13 :
+            text += datagram[i]
+            i += 1
+        return text 
