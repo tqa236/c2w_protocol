@@ -55,11 +55,12 @@ class SibylServerUdpTextProtocol(DatagramProtocol):
 
         """
         a = datagram.decode()
-        b = a.find(' ') + 1
+        b = a.find(' ')
         c = a.find(chr(13))
-        a = a[b:c]
-        mess = self.sibylServerProxy.generateResponse(a)
-        s = str(int(time.time())) + mess + chr(13)+chr(10)
+        d = a[b:c]
+        mess = self.sibylServerProxy.generateResponse(d)
+        e = b - 1        
+        s = a[:e] + mess + chr(13)+chr(10)
         self.transport.write(s.encode('utf-8'),host_port)
        
     
