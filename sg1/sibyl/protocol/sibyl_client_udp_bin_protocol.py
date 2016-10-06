@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
+import struct
+from time import time
+import math as m
 
 
 class SibylClientUdpBinProtocol(DatagramProtocol):
@@ -69,7 +72,8 @@ class SibylClientUdpBinProtocol(DatagramProtocol):
             as the controller calls it.
 
         """
-        pass
+        datagram = struct.pack('IH'+str(len(line))+'s', m.floor(time()), len(line), line.encode('utf-8'))
+        self.transport.write(datagram, (self.serverAddress, self.serverPort))
 
     def datagramReceived(self, datagram, host):
         """Called by Twisted whenever a datagram is received
@@ -85,5 +89,7 @@ class SibylClientUdpBinProtocol(DatagramProtocol):
             as Twisted calls it.
 
         """
-        pass
+        lengthline = str(len(datagram) - 6)
+        result = struct.unpack('IH' + lengthline + 's', datagram)
+        self.clientProxy.responseReceived(result[2].decode('utf-8'))
     

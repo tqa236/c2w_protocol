@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
 import struct
+from twisted.internet import reactor
+import math as m
 
 
-class SibylServerUdpBinProtocol(DatagramProtocol):
+class SibylServerTimerUdpBinProtocol(DatagramProtocol):
     """The class implementing the Sibyl UDP binary server protocol.
 
         .. note::
@@ -58,7 +60,8 @@ class SibylServerUdpBinProtocol(DatagramProtocol):
         """
         lengthline = str(len(datagram) - 6)
         result = struct.unpack('IH' + lengthline + 's', datagram)
+        waitingtime = m.ceil(m.log(result[1]))
         answer = self.sibylServerProxy.generateResponse(result[2])
         datagram = struct.pack('IH'+str(len(answer))+'s', result[0], len(answer), answer.encode('utf-8'))
-        self.transport.write(datagram, host_port)
+        reactor.callLater(waitingtime, self.transport.write, datagram, host_port)
     
