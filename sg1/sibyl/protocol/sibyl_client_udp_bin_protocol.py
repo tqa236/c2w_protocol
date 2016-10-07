@@ -73,10 +73,6 @@ class SibylClientUdpBinProtocol(DatagramProtocol):
 
         """
         datagram = struct.pack('IH'+str(len(line))+'s', m.floor(time()), len(line), line.encode('utf-8'))
-        print(datagram)
-        print(datagram[8])
-        print(datagram[4:6])
-        print(datagram[4:6] + datagram[8])
         self.transport.write(datagram, (self.serverAddress, self.serverPort))
 
     def datagramReceived(self, datagram, host):
