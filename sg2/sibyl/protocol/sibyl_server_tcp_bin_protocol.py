@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import Protocol
-
+import time, struct
 
 class SibylServerTcpBinProtocol(Protocol):
     """The class implementing the Sibyl TCP binary server protocol.
@@ -54,5 +54,31 @@ class SibylServerTcpBinProtocol(Protocol):
             as Twisted calls it.
 
         """
-        pass
+        self.buf += line
+        sizePack = len(line)
+        sizeMessage = struct.unpack_from('!ih',0,line)
+        sizeMessage = sizeMessage[1]
+        message = struck.unpack_from('!' + str(sizePack-6) +'s',line,6)
+        
+        
+        print(line)
+        messageReceived = struct.unpack('!ih',line)
+        print(messageReceived)
+
+        decodedMessage = messageReceived[2].decode('utf-8')
+        print(decodedMessage)
+        randomResponse = self.sibylServerProxy.generateResponse(decodedMessage) 
+        print(randomResponse)
+
+        A = randomResponse.encode('utf-8')
+        B = len(A)
+
+        today = messageReceived[0]
+        buf = bytearray(6+B)
+
+        struct.pack_into('!ih'+str(B)+'s',buf,0,today,B+6,A)
+        
+        print(buf)
+
+        self.transport.write(buf)
     

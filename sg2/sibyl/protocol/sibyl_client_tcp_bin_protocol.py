@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import Protocol
-
+import time, struct
 
 class SibylClientTcpBinProtocol(Protocol):
     """
@@ -42,6 +42,7 @@ class SibylClientTcpBinProtocol(Protocol):
                         interface;
         """
         self.clientProxy = sibylProxy
+        self.message = ''
 
     def connectionMade(self):
         """
@@ -66,7 +67,17 @@ class SibylClientTcpBinProtocol(Protocol):
             as the controller calls it.
 
         """
-        pass
+        A = line.encode('utf-8')
+        B = len(A)
+
+        today = int(time.time())
+        buf = bytearray(6+B)
+        
+        struct.pack_into('!ih'+str(B)+'s',buf,0,today,B+6,A)
+
+        print (buf)
+        self.transport.write(buf)
+
 
     def dataReceived(self, line):
         """Called by Twisted whenever a data is received
@@ -83,5 +94,14 @@ class SibylClientTcpBinProtocol(Protocol):
             as Twisted calls it.
 
         """
-        pass
+        print(line)
+        messageReceived = struct.unpack('!ih'+str(len(line)-6)+'s',line)
+        print(messageReceived)
+
+        decodedMessage = messageReceived[2].decode('utf-8')
+        print(decodedMessage)
+        self.clientProxy.responseReceived(decodedMessage)
+        self.message = ''
+
+
     
