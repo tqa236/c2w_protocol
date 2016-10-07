@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
-import time
+
 
 class SibylServerUdpTextProtocol(DatagramProtocol):
     """The class implementing the Sibyl UDP text server protocol.
@@ -54,13 +54,22 @@ class SibylServerUdpTextProtocol(DatagramProtocol):
                 parameters, as Twisted calls it.
 
         """
-        a = datagram.decode()
-        b = a.find(' ')
-        c = a.find(chr(13))
-        d = a[b:c]
-        mess = self.sibylServerProxy.generateResponse(d)
-        e = b - 1        
-        s = a[:e] + mess + chr(13)+chr(10)
-        self.transport.write(s.encode('utf-8'),host_port)
-       
+        print(datagram)
+        decodedMessage = datagram.decode('utf-8')
+        print(decodedMessage)
+        splitedMessage = decodedMessage.split(': ', 1)
+        print(splitedMessage[1])
+        randomResponse = self.sibylServerProxy.generateResponse(splitedMessage[1]) 
+        print(randomResponse)
+        
+        sendResponse = splitedMessage[0] + ": " + randomResponse + "CRLF"
+        print(sendResponse)
+        codedResponse = sendResponse.encode('utf-8')
+        print(codedResponse)
+        self.transport.write(codedResponse, host_port)
+
+        pass
+
+
+
     
