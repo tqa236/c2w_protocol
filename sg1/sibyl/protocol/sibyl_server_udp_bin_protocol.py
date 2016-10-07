@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
+import struct
 
 
 class SibylServerUdpBinProtocol(DatagramProtocol):
@@ -55,5 +56,9 @@ class SibylServerUdpBinProtocol(DatagramProtocol):
                 parameters, as Twisted calls it.
 
         """
-        pass
+        lengthline = str(len(datagram) - 6)
+        result = struct.unpack('IH' + lengthline + 's', datagram)
+        answer = self.sibylServerProxy.generateResponse(result[2])
+        datagram = struct.pack('IH'+str(len(answer))+'s', result[0], len(answer), answer.encode('utf-8'))
+        self.transport.write(datagram, host_port)
     

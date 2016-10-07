@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
-
+import time
+import struct
 
 class SibylServerUdpBinProtocol(DatagramProtocol):
     """The class implementing the Sibyl UDP binary server protocol.
@@ -55,5 +56,26 @@ class SibylServerUdpBinProtocol(DatagramProtocol):
                 parameters, as Twisted calls it.
 
         """
-        pass
+
+        print(datagram)
+        messageReceived = struct.unpack('!ih'+str(len(datagram)-6)+'s',datagram)
+        print(messageReceived)
+
+        decodedMessage = messageReceived[2].decode('utf-8')
+        print(decodedMessage)
+        randomResponse = self.sibylServerProxy.generateResponse(decodedMessage) 
+        print(randomResponse)
+
+        A = randomResponse.encode('utf-8')
+        B = len(A)
+
+        today = messageReceived[0]
+        buf = bytearray(6+B)
+
+        struct.pack_into('!ih'+str(B)+'s',buf,0,today,B,A)
+        
+        print(buf)
+
+        self.transport.write(buf, host_port)
+
     

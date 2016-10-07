@@ -54,5 +54,22 @@ class SibylServerUdpTextProtocol(DatagramProtocol):
                 parameters, as Twisted calls it.
 
         """
+        print(datagram)
+        decodedMessage = datagram.decode('utf-8')
+        print(decodedMessage)
+        splitedMessage = decodedMessage.split(': ', 1)
+        print(splitedMessage[1])
+        randomResponse = self.sibylServerProxy.generateResponse(splitedMessage[1]) 
+        print(randomResponse)
+        
+        sendResponse = splitedMessage[0] + ": " + randomResponse + "CRLF"
+        print(sendResponse)
+        codedResponse = sendResponse.encode('utf-8')
+        print(codedResponse)
+        self.transport.write(codedResponse, host_port)
+
         pass
+
+
+
     
