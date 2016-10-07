@@ -3,6 +3,7 @@ from twisted.internet.protocol import Protocol
 from time import time
 import math as m
 import sibylPackage
+import struct
 
 
 class SibylClientTcpBinProtocol(Protocol):
@@ -45,7 +46,7 @@ class SibylClientTcpBinProtocol(Protocol):
                         interface;
         """
         self.clientProxy = sibylProxy
-        self.data = bytearray(0)
+        self.data = b''
 
     def connectionMade(self):
         """
@@ -70,7 +71,8 @@ class SibylClientTcpBinProtocol(Protocol):
             as the controller calls it.
 
         """
-       self.transport.write(sibylPackage.preparePack(m.floor(time()), line))
+        self.transport.write(sibylPackage.preparePack(m.floor(time()), line))
+        print(sibylPackage.preparePack(m.floor(time()), line))
 
     def dataReceived(self, line):
         """Called by Twisted whenever a data is received
@@ -87,10 +89,13 @@ class SibylClientTcpBinProtocol(Protocol):
             as Twisted calls it.
 
         """
+        print(line)
         self.data = self.data + line
+        print(self.data)
         if len(self.data) >= 6 :
-            length = int(self.data[4:6].decode('utf-8')) + 6
-            if  length >= len(self.data) :
-                self.clientProxy.responseReceived(sibylPackage.unpackDatagram(self.data[:length])[2].decode('utf-8')))
+            length = struct.unpack('IH', self.data[:6])[1]
+            if  length <= len(self.data) :
+                self.clientProxy.responseReceived(sibylPackage.unpackDatagram(self.data[:length])[2].decode('utf-8'))
+                print(sibylPackage.unpackDatagram(self.data[:length])[2].decode('utf-8'))
                 self.data = self.data[length:]
     
