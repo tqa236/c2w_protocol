@@ -38,6 +38,7 @@ class SibylServerTcpBinProtocol(Protocol):
             sibylServerProxy: the instance of the server proxy.
         """
         self.sibylServerProxy = sibylServerProxy
+        self.buffer = bytearray(0)
 
     def dataReceived(self, line):
         """Called by Twisted whenever a data is received
@@ -54,31 +55,32 @@ class SibylServerTcpBinProtocol(Protocol):
             as Twisted calls it.
 
         """
-        self.buf += line
-        sizePack = len(line)
-        sizeMessage = struct.unpack_from('!ih',0,line)
-        sizeMessage = sizeMessage[1]
-        message = struck.unpack_from('!' + str(sizePack-6) +'s',line,6)
+        self.buffer = self.buffer + line
         
-        
-        print(line)
-        messageReceived = struct.unpack('!ih',line)
-        print(messageReceived)
+        if len(self.buffer) >= 6:
+            print(self.buffer)
+            front = self.buffer[:6]
+            messageInfo = struct.unpack('!ih',front)
+            messageLength = messageInfo[1]
+            if messageLength <= len(self.buffer):
+                messageReceived = struct.unpack('!ih'+str(len(self.buffer)-6)+'s',self.buffer)
+                self.buffer = self.buffer[messageLength:]
+                print(messageReceived)
 
-        decodedMessage = messageReceived[2].decode('utf-8')
-        print(decodedMessage)
-        randomResponse = self.sibylServerProxy.generateResponse(decodedMessage) 
-        print(randomResponse)
+                decodedMessage = messageReceived[2].decode('utf-8')
+                print(decodedMessage)
+                randomResponse = self.sibylServerProxy.generateResponse(decodedMessage) 
+                print(randomResponse)
 
-        A = randomResponse.encode('utf-8')
-        B = len(A)
+                A = randomResponse.encode('utf-8')
+                B = len(A)
 
-        today = messageReceived[0]
-        buf = bytearray(6+B)
+                today = messageReceived[0]
+                buf = bytearray(6+B)
 
-        struct.pack_into('!ih'+str(B)+'s',buf,0,today,B+6,A)
-        
-        print(buf)
+                struct.pack_into('!ih'+str(B)+'s',buf,0,today,B+6,A)
+                
+                print(buf)
 
-        self.transport.write(buf)
+                self.transport.write(buf)
     
