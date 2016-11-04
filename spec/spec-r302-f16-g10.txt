@@ -1,0 +1,560 @@
+
+
+
+
+                                                                R. DUVAL
+                                                               G. SAIBRO
+                                                                N. Louis
+                                                                A. TRINH
+                                                        Telecom Bretagne
+                                                        November 4, 2016
+
+
+             Group 10: c2w protocol specification proposal
+                     draft-ietf-xml2rfc-template-05
+
+Abstract
+
+   Protocol specification for the c2w (Chat While Watching) protocol.
+   The Chat While Watching application proposes a video streaming
+   service associated with a chatrooms, where users watching the same
+   video stream can chat with each other.  The c2w protocol satisfies
+   all of the communication requirement of the application (login, chat
+   services and room management), with the notable exception of the
+   video streaming, wich is satisfied by RTP.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Packet format . . . . . . . . . . . . . . . . . . . . . . . .   2
+     2.1.  Basic packet format . . . . . . . . . . . . . . . . . . .   2
+     2.2.  Content of DataType . . . . . . . . . . . . . . . . . . .   3
+   3.  Example scenario  . . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Scenario 1: title . . . . . . . . . . . . . . . . . . . .   4
+   4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   5.  xml2rfc Features  . . . . . . . . . . . . . . . . . . . . . .   5
+   6.  Simple List . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   7.  Figures . . . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   8.  Subsections and Tables  . . . . . . . . . . . . . . . . . . .   6
+     8.1.  A Subsection  . . . . . . . . . . . . . . . . . . . . . .   6
+     8.2.  Tables  . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   9.  More about Lists  . . . . . . . . . . . . . . . . . . . . . .   6
+     9.1.  Numbering Lists across Lists and Sections . . . . . . . .   7
+     9.2.  Where the List Numbering Continues  . . . . . . . . . . .   7
+   10. Example of Code or MIB Module To Be Extracted . . . . . . . .   8
+   11. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   9
+   12. References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
+     12.1.  Normative References . . . . . . . . . . . . . . . . . .   9
+     12.2.  Informative References . . . . . . . . . . . . . . . . .   9
+   Appendix A.  Additional Stuff . . . . . . . . . . . . . . . . . .   9
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   9
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 1]
+
+                          Group 10 c2w protocol            November 2016
+
+
+1.  Introduction
+
+   The Chat While Watching application is a video streaming service
+   associated with chatrooms for each video stream.  The client sends a
+   login request to the server using the c2w login format.  If the
+   server approves the login it will send an acknowledgment followed by
+   the list of accessible video streams, and the list of currently
+   connected users across multiple frames.  The user can then decide to
+   stay in the main chatroom (without video) or switch to a video
+   chatroom using a request with the c2w roommanagement format.  The
+   user can then send chat messages to the server which will then
+   transmit them to all users in the same room using the c2w chat
+   format.  At any time the user can quit the room he is in by sending a
+   c2w roommanagement request to the server, and when he is in the main
+   room he can send a disconnect request to the server to quit the
+   application.
+
+2.  Packet format
+
+2.1.  Basic packet format
+
+   The following format is the baseline for all the c2w messages
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |   Nc  |   Ns  |   DataType    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                                                               |
+       |                                                               |
+       |                                                               |
+       .                        Message Data                           .
+       .                                                               .
+       .                                                               .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                                 Figure 1
+
+   Size of the data (16 bits)
+           The size of the Message Data field in bits.
+
+   Nc (4 bits)
+           The numerotation of the frame that the client has last sent,
+           used to prevent frame loss by comparing this number to the
+           one the server is expecting.
+
+   Ns (4 bits)
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 2]
+
+                          Group 10 c2w protocol            November 2016
+
+
+           The numerotation of the frame that the server has last sent,
+           used to prevent frame loss by comparing this number to the
+           one the client is expecting.
+
+   DataType (8 bits)
+           This value represents the type of the data transported in
+           Message Data.
+
+   Message Data (variable lenght)
+           This field contains the important part of the frame.
+
+2.2.  Content of DataType
+
+   The content of DataType precise what Message Data will contain, and
+   thus how to interpret it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 3]
+
+                          Group 10 c2w protocol            November 2016
+
+
+   +---------+------------+------------+-------------------------------+
+   | Type of | DataType#1 | DataType#2 |           Commentary          |
+   |  frame  |            |            |                               |
+   +---------+------------+------------+-------------------------------+
+   |  Login  |    1010    |    1010    |   This frame is sent by the   |
+   | request |            |            |  user to create a connection  |
+   |         |            |            |        with the server        |
+   |  Login  |    1010    |    0000    | The server sends it to refuse |
+   |  denial |            |            |     the connection attempt    |
+   |   List  |    0101    |    0101    |   The server uses it to send  |
+   |  Video  |            |            |    the list of video stream   |
+   |         |            |            |           available           |
+   |  Update |    1001    |    1001    |  The server uses it to add /  |
+   |   User  |            |            |  remove / update user in the  |
+   |         |            |            |   user list of the recipient  |
+   |   Room  |    1101    |    1101    |  The client sends it to start |
+   |  entry  |            |            |  watching the specified video |
+   |         |            |            |      and access its room      |
+   |   Room  |    0010    |    0010    |  The client sends it to exit  |
+   |   exit  |            |            | the current room (if he is in |
+   |         |            |            | the main room he disconnects) |
+   |   Chat  |    1011    |    1011    | The client sends it to send a |
+   |   send  |            |            |  message to every other user  |
+   |         |            |            |          in the room          |
+   |   Chat  |    0111    |    0111    |     The server uses it to     |
+   | receive |            |            | broadcast a message sent by a |
+   |         |            |            |  user to every other user in  |
+   |         |            |            |         the same room         |
+   |   ACK   |    1111    |    1111    |  The universal acknowledgment |
+   |         |            |            |             frame             |
+   +---------+------------+------------+-------------------------------+
+
+          Table 1: The type of frame and the content of DataType
+
+3.  Example scenario
+
+3.1.  Scenario 1: title
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 4]
+
+                          Group 10 c2w protocol            November 2016
+
+
+   MSG 1 from toto to titi
+
+   etc
+
+   You can also use a figure like this:
+
+        Alice                                            Bob
+           |                                               |
+           |             Message 1 (Request)               |
+           |---------------------------------------------->|
+           |            (details of the message)           |
+           |                                               |
+           |                                               |
+           |               Message 2 (Response)            |
+           |<----------------------------------------------|
+           |                   (Details)                   |
+
+
+4.  Conclusion
+
+   Your conclusion goes here.
+
+5.  xml2rfc Features
+
+   In this sample file, the following sections show how to use some of
+   the features of supported by xml2rfc.  This is a non-exhaustive list.
+   It is up to each group to decide which of these features (if any) to
+   use in the protocol specification.
+
+   This document is a modified version of the Internet-Draft template by
+   Elwyn Davies, available on the IETF website [IDSample].
+
+6.  Simple List
+
+   List styles: 'empty', 'symbols', 'letters', 'numbers', 'hanging',
+   'format'.
+
+   o  First bullet
+
+   o  Second bullet
+
+   You can write text here as well.
+
+7.  Figures
+
+   Figures should not exceed 69 characters wide to allow for the indent
+   of sections.
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 5]
+
+                          Group 10 c2w protocol            November 2016
+
+
+                 Preamble text - can be omitted or empty.
+
+   +-----------------------+
+   | Use XML, be Happy :-) |
+   |_______________________|
+
+        Cross-references allowed in pre- and postamble. [min_ref].
+
+                                 Figure 2
+
+   The CDATA means you don't need to escape meta-characters (especially
+   <(&lt;) and &(&amp;)) but is not essential.  Figures may also have a
+   title attribute but it won't be displayed unless there is also an
+   anchor.  White space, both horizontal and vertical, is significant in
+   figures even if you don't use CDATA.
+
+8.  Subsections and Tables
+
+8.1.  A Subsection
+
+   By default 3 levels of nesting show in table of contents but that can
+   be adjusted with the value of the "tocdepth" processing instruction.
+
+8.2.  Tables
+
+   .. are very similar to figures:
+
+     Tables use ttcol to define column headers and widths.  Every cell
+                  then has a "c" element for its content.
+
+                          +----------+----------+
+                          | ttcol #1 | ttcol #2 |
+                          +----------+----------+
+                          |   c #1   |   c #2   |
+                          |   c #3   |   c #4   |
+                          |   c #5   |   c #6   |
+                          +----------+----------+
+
+                      which is a very simple example.
+
+                       Table 2: A Very Simple Table
+
+9.  More about Lists
+
+   Lists with 'hanging labels': the list item is indented the amount of
+   the hangIndent:
+
+   short   With a label shorter than the hangIndent.
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 6]
+
+                          Group 10 c2w protocol            November 2016
+
+
+   fantastically long label  With a label longer than the hangIndent.
+
+   vspace_trick
+           Forces the new item to start on a new line.
+
+   Simulating more than one paragraph in a list item using <vspace>:
+
+   a.  First, a short item.
+
+   b.  Second, a longer list item.
+
+       And something that looks like a separate pararaph..
+
+   Simple indented paragraph using the "empty" style:
+
+      The quick, brown fox jumped over the lazy dog and lived to fool
+      many another hunter in the great wood in the west.
+
+9.1.  Numbering Lists across Lists and Sections
+
+   Numbering items continuously although they are in separate <list>
+   elements, maybe in separate sections using the "format" style and a
+   "counter" variable.
+
+   First list:
+
+   R1  #1
+
+   R2  #2
+
+   R3  #3
+
+   Specify the indent explicitly so that all the items line up nicely.
+
+   Second list:
+
+   R4  #4
+
+   R5  #5
+
+   R6  #6
+
+9.2.  Where the List Numbering Continues
+
+   List continues here.
+
+   Third list:
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 7]
+
+                          Group 10 c2w protocol            November 2016
+
+
+   R7  #7
+
+   R8  #8
+
+   R9  #9
+
+   R10 #10
+
+   The end of the list.
+
+10.  Example of Code or MIB Module To Be Extracted
+
+   The <artwork> element has a number of extra attributes that can be
+   used to substitute a more aesthetically pleasing rendition into HTML
+   output while continuing to use the ASCII art version in the text and
+   nroff outputs (see the xml2rfc README for details).  It also has a
+   "type" attribute.  This is currently ignored except in the case
+   'type="abnf"'.  In this case the "artwork" is expected to contain a
+   piece of valid Augmented Backus-Naur Format (ABNF) grammar.  This
+   will be syntax checked by xml2rfc and any errors will cause a fatal
+   error if the "strict" processing instruction is set to "yes".  The
+   ABNF will also be colorized in HTML output to highlight the syntactic
+   components.  Checking of additional "types" may be provided in future
+   versions of xml2rfc.
+
+
+   /**** an example C program */
+
+   #include <stdio.h>
+
+   void
+   main(int argc, char *argv[])
+   {
+       int i;
+
+       printf("program arguments are:\n");
+       for (i = 0; i < argc; i++) {
+           printf("%d: \"%s\"\n", i, argv[i]);
+       }
+
+       exit(0);
+   } /* main */
+
+   /* end of file */
+
+
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 8]
+
+                          Group 10 c2w protocol            November 2016
+
+
+11.  Acknowledgements
+
+   This template was derived from an initial version written by Pekka
+   Savola and contributed by him to the xml2rfc project.
+
+   This document is part of a plan to make xml2rfc indispensable
+   [DOMINATION].
+
+12.  References
+
+12.1.  Normative References
+
+   [min_ref]  authSurName, authInitials., "Minimal Reference", 2006.
+
+12.2.  Informative References
+
+   [DOMINATION]
+              Mad Dominators, Inc., "Ultimate Plan for Taking Over the
+              World", 1984, <http://www.example.com/dominator.html>.
+
+   [IDSample]
+              Davies, E., "Internet Draft Sample", 2006,
+              <http://tools.ietf.org/tools/templates/
+              draft-davies-template-bare.txt>.
+
+Appendix A.  Additional Stuff
+
+   This becomes an Appendix.
+
+Authors' Addresses
+
+   Remy Duval
+   Telecom Bretagne
+   Brest
+   France
+
+   Email: remy.duval@telecom-bretagne.eu
+
+
+   Guinther SAIBRO
+   Telecom Bretagne
+   Brest
+   France
+
+   Email: gsaibro@gmail.com
+
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                  [Page 9]
+
+                          Group 10 c2w protocol            November 2016
+
+
+   Ndzamba Louis
+   Telecom Bretagne
+   Brest
+   France
+
+   Email: louis.ndzamba@telecom-bretagne.eu
+
+
+   Quoc-Anh TRINH
+   Telecom Bretagne
+   Brest
+   France
+
+   Email: quoc.trinh@telecom-bretagne.eu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.              Expires May 8, 2017                 [Page 10]
