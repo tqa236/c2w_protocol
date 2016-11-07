@@ -7,11 +7,11 @@
                                                                 N. Louis
                                                                 A. TRINH
                                                         Telecom Bretagne
-                                                        November 4, 2016
+                                                        November 7, 2016
 
 
              Group 10: c2w protocol specification proposal
-                     draft-ietf-xml2rfc-template-05
+                           spec-r302-f16-g10
 
 Abstract
 
@@ -25,38 +25,22 @@ Abstract
 
 Table of Contents
 
-   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   1
    2.  Packet format . . . . . . . . . . . . . . . . . . . . . . . .   2
      2.1.  Basic packet format . . . . . . . . . . . . . . . . . . .   2
      2.2.  Content of DataType . . . . . . . . . . . . . . . . . . .   3
-   3.  Example scenario  . . . . . . . . . . . . . . . . . . . . . .   4
-     3.1.  Scenario 1: title . . . . . . . . . . . . . . . . . . . .   4
-   4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .   5
-   5.  xml2rfc Features  . . . . . . . . . . . . . . . . . . . . . .   5
-   6.  Simple List . . . . . . . . . . . . . . . . . . . . . . . . .   5
-   7.  Figures . . . . . . . . . . . . . . . . . . . . . . . . . . .   5
-   8.  Subsections and Tables  . . . . . . . . . . . . . . . . . . .   6
-     8.1.  A Subsection  . . . . . . . . . . . . . . . . . . . . . .   6
-     8.2.  Tables  . . . . . . . . . . . . . . . . . . . . . . . . .   6
-   9.  More about Lists  . . . . . . . . . . . . . . . . . . . . . .   6
-     9.1.  Numbering Lists across Lists and Sections . . . . . . . .   7
-     9.2.  Where the List Numbering Continues  . . . . . . . . . . .   7
-   10. Example of Code or MIB Module To Be Extracted . . . . . . . .   8
-   11. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   9
-   12. References  . . . . . . . . . . . . . . . . . . . . . . . . .   9
-     12.1.  Normative References . . . . . . . . . . . . . . . . . .   9
-     12.2.  Informative References . . . . . . . . . . . . . . . . .   9
-   Appendix A.  Additional Stuff . . . . . . . . . . . . . . . . . .   9
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   9
-
-
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 1]
-
-                          Group 10 c2w protocol            November 2016
-
+     2.3.  Login request . . . . . . . . . . . . . . . . . . . . . .   3
+     2.4.  Login denial  . . . . . . . . . . . . . . . . . . . . . .   4
+     2.5.  List video  . . . . . . . . . . . . . . . . . . . . . . .   4
+     2.6.  Update user . . . . . . . . . . . . . . . . . . . . . . .   5
+     2.7.  Room entry  . . . . . . . . . . . . . . . . . . . . . . .   6
+     2.8.  Room exit . . . . . . . . . . . . . . . . . . . . . . . .   6
+     2.9.  Chat send . . . . . . . . . . . . . . . . . . . . . . . .   6
+     2.10. Chat receive  . . . . . . . . . . . . . . . . . . . . . .   7
+     2.11. Chat send . . . . . . . . . . . . . . . . . . . . . . . .   8
+   3.  Example scenario  . . . . . . . . . . . . . . . . . . . . . .   8
+   4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  10
 
 1.  Introduction
 
@@ -66,14 +50,21 @@ DUVAL, et al.              Expires May 8, 2017                  [Page 1]
    server approves the login it will send an acknowledgment followed by
    the list of accessible video streams, and the list of currently
    connected users across multiple frames.  The user can then decide to
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 1]
+
+                          Group 10 c2w protocol            November 2016
+
+
    stay in the main chatroom (without video) or switch to a video
-   chatroom using a request with the c2w roommanagement format.  The
-   user can then send chat messages to the server which will then
-   transmit them to all users in the same room using the c2w chat
-   format.  At any time the user can quit the room he is in by sending a
-   c2w roommanagement request to the server, and when he is in the main
-   room he can send a disconnect request to the server to quit the
-   application.
+   chatroom using a request with the c2w room entry format.  The user
+   can then send chat messages to the server which will then transmit
+   them to all users in the same room using the c2w chat format.  At any
+   time the user can quit the video room he is in by sending a c2w room
+   exit request to the server, and when he is in the main room the room
+   exit request disconnects him.
 
 2.  Packet format
 
@@ -84,7 +75,7 @@ DUVAL, et al.              Expires May 8, 2017                  [Page 1]
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-       |     Size of the data          |   Nc  |   Ns  |   DataType    |
+       |     Size of the data          |        N      |   DataType    |
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
        |                                                               |
        |                                                               |
@@ -98,115 +89,69 @@ DUVAL, et al.              Expires May 8, 2017                  [Page 1]
                                  Figure 1
 
    Size of the data (16 bits)
-           The size of the Message Data field in bits.
+           The size of the Message Data field in bytes.
 
-   Nc (4 bits)
-           The numerotation of the frame that the client has last sent,
-           used to prevent frame loss by comparing this number to the
-           one the server is expecting.
-
-   Ns (4 bits)
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 2]
-
-                          Group 10 c2w protocol            November 2016
-
-
-           The numerotation of the frame that the server has last sent,
-           used to prevent frame loss by comparing this number to the
-           one the client is expecting.
+   N (8 bits)
+           The numerotation of the frame sent, used to prevent frame
+           loss by comparing it to the number the recipient is
+           expecting.
 
    DataType (8 bits)
            This value represents the type of the data transported in
            Message Data.
 
    Message Data (variable lenght)
-           This field contains the important part of the frame.
+           This field contains the important part of the frame.  The
+           length of this field is limited by the Size of the data
+           field, to about 65 000 bytes.
+
+
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 2]
+
+                          Group 10 c2w protocol            November 2016
+
 
 2.2.  Content of DataType
 
    The content of DataType precise what Message Data will contain, and
    thus how to interpret it.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 3]
-
-                          Group 10 c2w protocol            November 2016
-
-
-   +---------+------------+------------+-------------------------------+
-   | Type of | DataType#1 | DataType#2 |           Commentary          |
-   |  frame  |            |            |                               |
-   +---------+------------+------------+-------------------------------+
-   |  Login  |    1010    |    1010    |   This frame is sent by the   |
-   | request |            |            |  user to create a connection  |
-   |         |            |            |        with the server        |
-   |  Login  |    1010    |    0000    | The server sends it to refuse |
-   |  denial |            |            |     the connection attempt    |
-   |   List  |    0101    |    0101    |   The server uses it to send  |
-   |  Video  |            |            |    the list of video stream   |
-   |         |            |            |           available           |
-   |  Update |    1001    |    1001    |  The server uses it to add /  |
-   |   User  |            |            |  remove / update user in the  |
-   |         |            |            |   user list of the recipient  |
-   |   Room  |    1101    |    1101    |  The client sends it to start |
-   |  entry  |            |            |  watching the specified video |
-   |         |            |            |      and access its room      |
-   |   Room  |    0010    |    0010    |  The client sends it to exit  |
-   |   exit  |            |            | the current room (if he is in |
-   |         |            |            | the main room he disconnects) |
-   |   Chat  |    1011    |    1011    | The client sends it to send a |
-   |   send  |            |            |  message to every other user  |
-   |         |            |            |          in the room          |
-   |   Chat  |    0111    |    0111    |     The server uses it to     |
-   | receive |            |            | broadcast a message sent by a |
-   |         |            |            |  user to every other user in  |
-   |         |            |            |         the same room         |
-   |   ACK   |    1111    |    1111    |  The universal acknowledgment |
-   |         |            |            |             frame             |
-   +---------+------------+------------+-------------------------------+
+   +---------+----------+----------+-----------------------------------+
+   | Type of | DataType | DataType |                Role               |
+   |  frame  |  part 1  |  part 2  |                                   |
+   +---------+----------+----------+-----------------------------------+
+   |  Login  |   1010   |   1010   | This frame is sent by the user to |
+   | request |          |          |    create a connection with the   |
+   |         |          |          |               server              |
+   |  Login  |   1010   |   0000   | The server sends it to refuse the |
+   |  denial |          |          |         connection attempt        |
+   |   List  |   0101   |   0101   |   The server uses it to send the  |
+   |  Video  |          |          |   list of video stream available  |
+   |  Update |   1001   |   1001   |    The server uses it to add /    |
+   |   User  |          |          |  remove / update user in the user |
+   |         |          |          |       list of the recipient       |
+   |   Room  |   1101   |   1101   |    The client sends it to start   |
+   |  entry  |          |          |  watching the specified video and |
+   |         |          |          |          access its room          |
+   |   Room  |   0010   |   0010   |  The client sends it to exit the  |
+   |   exit  |          |          |   current room (if he is in the   |
+   |         |          |          |     main room he disconnects)     |
+   |   Chat  |   1011   |   1011   |   The client sends it to send a   |
+   |   send  |          |          |   message to every other user in  |
+   |         |          |          |              the room             |
+   |   Chat  |   0111   |   0111   | The server uses it to broadcast a |
+   | receive |          |          |  message sent by a user to every  |
+   |         |          |          |    other user in the same room    |
+   |   ACK   |   1111   |   1111   |    The universal acknowledgment   |
+   |         |          |          |               frame               |
+   +---------+----------+----------+-----------------------------------+
 
           Table 1: The type of frame and the content of DataType
 
-3.  Example scenario
-
-3.1.  Scenario 1: title
+2.3.  Login request
 
 
 
@@ -220,264 +165,377 @@ DUVAL, et al.              Expires May 8, 2017                  [Page 3]
 
 
 
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 4]
+DUVAL, et al.             Expires May 11, 2017                  [Page 3]
 
                           Group 10 c2w protocol            November 2016
 
 
-   MSG 1 from toto to titi
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1010 1010   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                       Server  (IP Address)                    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |               Port            |                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+       .                                                               .
+       .                     Login                                     .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-   etc
+   Server (32 bits)
+           The IP address of the server to connect to.
+
+   Port (16 bits)
+           The port of the server to connect to.
+
+   Login (variable length)
+           The login of the user.
+
+2.4.  Login denial
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1010 0000   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       .                                                               .
+       .                     Error message                             .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Error message (variable length)
+           Explain why the login attempt has been denied by the server.
+
+2.5.  List video
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 4]
+
+                          Group 10 c2w protocol            November 2016
+
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   0101 0101   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                       Server  (IP Address)                    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |               Port            |                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+       .                                                               .
+       .                     Name of the video                         .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Server (32 bits)
+           The IP address of the video streaming server
+
+   Port (16 bits)
+           The port of the video in the streaming server.
+
+   Video (variable length)
+           The name of the video.
+
+2.6.  Update user
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1001 1001   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |Update |  0000 |                                               |
+       +-+-+-+-+-+-+-+-+                                               |
+       .                                                               .
+       .                     Username                                  .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Update (4 bits)
+           Defines the type of update on the user in the user list (add
+           it to the list, remove it, change its status).
+
+   Username (variable length)
+           The name of the user.
+
+
+
+
+
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 5]
+
+                          Group 10 c2w protocol            November 2016
+
+
+          +--------------------------------------+-------------+
+          |            Type of update            | Update code |
+          +--------------------------------------+-------------+
+          |   Add user (status : in main room)   |     1010    |
+          |             Remove user              |     0101    |
+          | Add user (status : watching a video) |     1110    |
+          |            Change status             |     1111    |
+          +--------------------------------------+-------------+
+
+                                  Update
+
+2.7.  Room entry
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1101 1101   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                       Server  (IP Address)                    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |               Port            |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Server (32 bits)
+           The IP address of the server streaming the video
+
+   Port (16 bits)
+           The port of the video in the server.
+
+2.8.  Room exit
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   0010 0010   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+2.9.  Chat send
+
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 6]
+
+                          Group 10 c2w protocol            November 2016
+
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1011 1011   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                            Time                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       .                                                               .
+       .                     Message content                           .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Time (32 bits)
+           The time when the user sent the message (Unix time).
+
+   Message content (variable length)
+           The content of the message the user sent.
+
+2.10.  Chat receive
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   0111 0111   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                            Time                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of Username          |                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+       |                            Username                           |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       .                                                               .
+       .                     Message content                           .
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Time (32 bits)
+           The time when the user sent the message (Unix time).
+
+   Size of Username (16 bits)
+           The size of Username field in bytes.
+
+   Username (variable length)
+           The username of the sender.
+
+   Message content (variable length)
+           The content of the message the user sent.
+
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 7]
+
+                          Group 10 c2w protocol            November 2016
+
+
+2.11.  Chat send
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     Size of the data          |      N        |   1111 1111   |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |     AckType   |    Number     |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   AckType (8 bits)
+           The DataType of the request that is acknowledged.
+
+   Number (8 bits)
+           The number of the next request expected.
+
+3.  Example scenario
+
+
 
    You can also use a figure like this:
 
-        Alice                                            Bob
+        Alice                                            Server
            |                                               |
-           |             Message 1 (Request)               |
-           |---------------------------------------------->|
-           |            (details of the message)           |
+           | Login request (N = 0, 1010 1010)              |
+          1|---------------------------------------------->|0
+           |            (IP, Port, "Alice")                |
+           |                                               |
+           |    "Alice tries to login into the server"     |
            |                                               |
            |                                               |
-           |               Message 2 (Response)            |
-           |<----------------------------------------------|
-           |                   (Details)                   |
+           | ACK (N = 0, 1111 1111)                        |
+          1|<----------------------------------------------|0
+           |            (1010 1010, N = 1)                 |
+           |                                               |
+           | List video (N = 0, 0101 0101)                 |
+          1|<----------------------------------------------|1
+           |            (IP, Port, "Panda")                |
+           |                                               |
+           |   "The server sends to Alice the list of      |
+           |    available videos, here "Panda" "           |
+           |                                               |
+           |                                               |
+           | ACK (N = 1, 1111 1111)                        |
+          1|---------------------------------------------->|1
+           |            (0101 0101, N = 1)                 |
+           |                                               |
+           | Update user (N = 1, 1001 1001)                |
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 8]
+
+                          Group 10 c2w protocol            November 2016
+
+
+          1|<----------------------------------------------|2
+           |      (1010 (add : in the main room), "Bob")   |
+           |                                               |
+           | "The server tells Alice another user logs in  |
+           |  the main room, his username is Bob"          |
+           |                                               |
+           |                                               |
+           | ACK (N = 1, 1111 1111)                        |
+          1|---------------------------------------------->|2
+           |            (1001 1001, N = 2)                 |
+           |                                               |
+           | Update user (N = 2, 1001 1001)                |
+          1|<----------------------------------------------|3
+           |        (1111 (change status), "Bob")          |
+           |                                               |
+           | "The server tells Alice that Bob entered in a |
+           |  video room"                                  |
+           |                                               |
+           |                                               |
+           | ACK (N = 1, 1111 1111)                        |
+          1|---------------------------------------------->|3
+           |            (1001 1001, N = 3)                 |
+           |                                               |
+           | Room entry (N = 1, 1101 1101)                 |
+          2|---------------------------------------------->|3
+           |            (IPVideo, Port)                    |
+           |                                               |
+           | "Alice enters in the video room "Panda""      |
+           |                                               |
+           |                                               |
+           |                                               |
+           | ACK (N = 3, 1111 1111)                        |
+          2|<----------------------------------------------|3
+           |            (1101 1101, N = 2)                 |
+           |                                               |
+           | Update user (N = 3, 1001 1001)                |
+          2|<----------------------------------------------|4
+           |        (1110 (add user : watching), "Bob")    |
+           |                                               |
+           | "The server tells Alice that Bob is in the    |
+           |  same video room"                             |
+           |                                               |
+           |                                               |
+           | ACK (N = 2, 1111 1111)                        |
+          2|---------------------------------------------->|4
+           |            (1001 1001, N = 4)                 |
+           |                                               |
+           |                                               |
+
+
+
+DUVAL, et al.             Expires May 11, 2017                  [Page 9]
+
+                          Group 10 c2w protocol            November 2016
+
+
+           | Chat send (N = 2, 1011 1011)                  |
+          3|---------------------------------------------->|4
+           |            (Time, "Hello Worldddddd !")       |
+           |                                               |
+           |"Alice sends a message to everyone in the room"|
+           |                                               |
+           |                                               |
+           | ACK (N = 4, 1111 1111)                        |
+          3|<----------------------------------------------|4
+           |            (1011 1011, N = 3)                 |
+           |                                               |
+           | Chat receive (N = 4 , 0111 0111)              |
+          3|<----------------------------------------------|5
+           |    (Time, UserSize = 3, "Bob", "Hello")       |
+           |                                               |
+           |"Bob, being in the same room, received Alice's |
+           | message and replied with "Hello" "            |
+           |                                               |
+           |                                               |
+           | ACK (N = 3, 1111 1111)                        |
+          3|---------------------------------------------->|5
+           |            (0111 0111, N = 5)                 |
 
 
 4.  Conclusion
 
-   Your conclusion goes here.
-
-5.  xml2rfc Features
-
-   In this sample file, the following sections show how to use some of
-   the features of supported by xml2rfc.  This is a non-exhaustive list.
-   It is up to each group to decide which of these features (if any) to
-   use in the protocol specification.
-
-   This document is a modified version of the Internet-Draft template by
-   Elwyn Davies, available on the IETF website [IDSample].
-
-6.  Simple List
-
-   List styles: 'empty', 'symbols', 'letters', 'numbers', 'hanging',
-   'format'.
-
-   o  First bullet
-
-   o  Second bullet
-
-   You can write text here as well.
-
-7.  Figures
-
-   Figures should not exceed 69 characters wide to allow for the indent
-   of sections.
-
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 5]
-
-                          Group 10 c2w protocol            November 2016
-
-
-                 Preamble text - can be omitted or empty.
-
-   +-----------------------+
-   | Use XML, be Happy :-) |
-   |_______________________|
-
-        Cross-references allowed in pre- and postamble. [min_ref].
-
-                                 Figure 2
-
-   The CDATA means you don't need to escape meta-characters (especially
-   <(&lt;) and &(&amp;)) but is not essential.  Figures may also have a
-   title attribute but it won't be displayed unless there is also an
-   anchor.  White space, both horizontal and vertical, is significant in
-   figures even if you don't use CDATA.
-
-8.  Subsections and Tables
-
-8.1.  A Subsection
-
-   By default 3 levels of nesting show in table of contents but that can
-   be adjusted with the value of the "tocdepth" processing instruction.
-
-8.2.  Tables
-
-   .. are very similar to figures:
-
-     Tables use ttcol to define column headers and widths.  Every cell
-                  then has a "c" element for its content.
-
-                          +----------+----------+
-                          | ttcol #1 | ttcol #2 |
-                          +----------+----------+
-                          |   c #1   |   c #2   |
-                          |   c #3   |   c #4   |
-                          |   c #5   |   c #6   |
-                          +----------+----------+
-
-                      which is a very simple example.
-
-                       Table 2: A Very Simple Table
-
-9.  More about Lists
-
-   Lists with 'hanging labels': the list item is indented the amount of
-   the hangIndent:
-
-   short   With a label shorter than the hangIndent.
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 6]
-
-                          Group 10 c2w protocol            November 2016
-
-
-   fantastically long label  With a label longer than the hangIndent.
-
-   vspace_trick
-           Forces the new item to start on a new line.
-
-   Simulating more than one paragraph in a list item using <vspace>:
-
-   a.  First, a short item.
-
-   b.  Second, a longer list item.
-
-       And something that looks like a separate pararaph..
-
-   Simple indented paragraph using the "empty" style:
-
-      The quick, brown fox jumped over the lazy dog and lived to fool
-      many another hunter in the great wood in the west.
-
-9.1.  Numbering Lists across Lists and Sections
-
-   Numbering items continuously although they are in separate <list>
-   elements, maybe in separate sections using the "format" style and a
-   "counter" variable.
-
-   First list:
-
-   R1  #1
-
-   R2  #2
-
-   R3  #3
-
-   Specify the indent explicitly so that all the items line up nicely.
-
-   Second list:
-
-   R4  #4
-
-   R5  #5
-
-   R6  #6
-
-9.2.  Where the List Numbering Continues
-
-   List continues here.
-
-   Third list:
-
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 7]
-
-                          Group 10 c2w protocol            November 2016
-
-
-   R7  #7
-
-   R8  #8
-
-   R9  #9
-
-   R10 #10
-
-   The end of the list.
-
-10.  Example of Code or MIB Module To Be Extracted
-
-   The <artwork> element has a number of extra attributes that can be
-   used to substitute a more aesthetically pleasing rendition into HTML
-   output while continuing to use the ASCII art version in the text and
-   nroff outputs (see the xml2rfc README for details).  It also has a
-   "type" attribute.  This is currently ignored except in the case
-   'type="abnf"'.  In this case the "artwork" is expected to contain a
-   piece of valid Augmented Backus-Naur Format (ABNF) grammar.  This
-   will be syntax checked by xml2rfc and any errors will cause a fatal
-   error if the "strict" processing instruction is set to "yes".  The
-   ABNF will also be colorized in HTML output to highlight the syntactic
-   components.  Checking of additional "types" may be provided in future
-   versions of xml2rfc.
-
-
-   /**** an example C program */
-
-   #include <stdio.h>
-
-   void
-   main(int argc, char *argv[])
-   {
-       int i;
-
-       printf("program arguments are:\n");
-       for (i = 0; i < argc; i++) {
-           printf("%d: \"%s\"\n", i, argv[i]);
-       }
-
-       exit(0);
-   } /* main */
-
-   /* end of file */
-
-
-
-
-
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 8]
-
-                          Group 10 c2w protocol            November 2016
-
-
-11.  Acknowledgements
-
-   This template was derived from an initial version written by Pekka
-   Savola and contributed by him to the xml2rfc project.
-
-   This document is part of a plan to make xml2rfc indispensable
-   [DOMINATION].
-
-12.  References
-
-12.1.  Normative References
-
-   [min_ref]  authSurName, authInitials., "Minimal Reference", 2006.
-
-12.2.  Informative References
-
-   [DOMINATION]
-              Mad Dominators, Inc., "Ultimate Plan for Taking Over the
-              World", 1984, <http://www.example.com/dominator.html>.
-
-   [IDSample]
-              Davies, E., "Internet Draft Sample", 2006,
-              <http://tools.ietf.org/tools/templates/
-              draft-davies-template-bare.txt>.
-
-Appendix A.  Additional Stuff
-
-   This becomes an Appendix.
+   This protocol can be used either on top of TCP or UDP, as it
+   implements its own reliability method.  It satisfies most of the
+   needs of the application Chat While Watching, with the exception of
+   the video stream, which must be satisfied by RTP.
 
 Authors' Addresses
 
@@ -499,9 +557,7 @@ Authors' Addresses
 
 
 
-
-
-DUVAL, et al.              Expires May 8, 2017                  [Page 9]
+DUVAL, et al.             Expires May 11, 2017                 [Page 10]
 
                           Group 10 c2w protocol            November 2016
 
@@ -557,4 +613,4 @@ DUVAL, et al.              Expires May 8, 2017                  [Page 9]
 
 
 
-DUVAL, et al.              Expires May 8, 2017                 [Page 10]
+DUVAL, et al.             Expires May 11, 2017                 [Page 11]

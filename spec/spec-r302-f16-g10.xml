@@ -34,7 +34,7 @@
 <!-- do not display copyright and other IETF-related stuff -->
 <?rfc private="(c) GROUP XXXX, 2013" ?>
 
-<rfc category="info" docName="draft-ietf-xml2rfc-template-05" ipr="trust200902">
+<rfc category="info" docName="spec-r302-f16-g10" ipr="trust200902">
   <!-- category values: std, bcp, info, exp, and historic
      ipr values: full3667, noModification3667, noDerivatives3667
      you can add the attributes updates="NNNN" and obsoletes="NNNN" 
@@ -185,7 +185,7 @@
 
   <middle>
     <section title="Introduction">
-      <t>The Chat While Watching application is a video streaming service associated with chatrooms for each video stream. The client sends a login request to the server using the c2w login format. If the server approves the login it will send an acknowledgment followed by the list of accessible video streams, and the list of currently connected users across multiple frames. The user can then decide to stay in the main chatroom (without video) or switch to a video chatroom using a request with the c2w roommanagement format. The user can then send chat messages to the server which will then transmit them to all users in the same room using the c2w chat format. At any time the user can quit the room he is in by sending a c2w roommanagement request to the server, and when he is in the main room he can send a disconnect request to the server to quit the application.</t>
+      <t>The Chat While Watching application is a video streaming service associated with chatrooms for each video stream. The client sends a login request to the server using the c2w login format. If the server approves the login it will send an acknowledgment followed by the list of accessible video streams, and the list of currently connected users across multiple frames. The user can then decide to stay in the main chatroom (without video) or switch to a video chatroom using a request with the c2w room entry format. The user can then send chat messages to the server which will then transmit them to all users in the same room using the c2w chat format. At any time the user can quit the video room he is in by sending a c2w room exit request to the server, and when he is in the main room the room exit request disconnects him.</t>
 
     </section>
 
@@ -201,7 +201,7 @@
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |     Size of the data          |   Nc  |   Ns  |   DataType    |
+    |     Size of the data          |        N      |   DataType    |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                                                               |
     |                                                               |
@@ -216,20 +216,17 @@
 
     <t><list hangIndent="8" style="hanging">
           <t hangText="Size of the data (16 bits)"><vspace blankLines="0" />
-          The size of the Message Data field in bits.</t>
+          The size of the Message Data field in bytes.</t>
 
-          <t hangText="Nc (4 bits)"><vspace blankLines="0" />
-          The numerotation of the frame that the client has last sent, used to prevent frame loss by comparing this number to the one the server is expecting.</t>
-          
-          <t hangText="Ns (4 bits)"><vspace blankLines="0" />
-          The numerotation of the frame that the server has last sent, used to prevent frame loss by comparing this number to the one the client is expecting.</t>
-
+          <t hangText="N (8 bits)"><vspace blankLines="0" />
+          The numerotation of the frame sent, used to prevent frame loss by comparing it to the number the recipient is expecting.</t>
+         
           <t hangText="DataType (8 bits)"><vspace blankLines="0" />
           This value represents the type of the data transported in Message Data.</t>
 
           
           <t hangText="Message Data (variable lenght)"><vspace blankLines="0" />
-          This field contains the important part of the frame.</t>
+          This field contains the important part of the frame. The length of this field is limited by the Size of the data field, to about 65 000 bytes.</t>
         </list></t>
         </section>
         
@@ -240,11 +237,11 @@
 
           <ttcol align="center">Type of frame</ttcol>
 
-          <ttcol align="center">DataType#1</ttcol>
+          <ttcol align="center">DataType part 1</ttcol>
           
-          <ttcol align="center">DataType#2</ttcol>
+          <ttcol align="center">DataType part 2</ttcol>
           
-          <ttcol align="center">Commentary</ttcol>
+          <ttcol align="center">Role</ttcol>
 
           <c>Login request</c><c>1010</c><c>1010</c><c>This frame is sent by the user to create a connection with the server</c>
 
@@ -266,243 +263,387 @@
 
         </texttable>
       </section>
+      <section title="Login request">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1010 1010   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                       Server  (IP Address)                    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |               Port            |                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+    .                                                               .
+    .                     Login                                     .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Server (32 bits)"><vspace blankLines="0" />
+          The IP address of the server to connect to.</t>
+
+          <t hangText="Port (16 bits)"><vspace blankLines="0" />
+          The port of the server to connect to.</t>
+          
+          <t hangText="Login (variable length)"><vspace blankLines="0" />
+          The login of the user.</t>
+        </list></t>
+        </section>
+        <section title="Login denial">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1010 0000   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    .                                                               .
+    .                     Error message                             .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Error message (variable length)"><vspace blankLines="0" />
+          Explain why the login attempt has been denied by the server.</t>
+        </list></t>
+        </section>
+        <section title="List video">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   0101 0101   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                       Server  (IP Address)                    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |               Port            |                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+    .                                                               .
+    .                     Name of the video                         .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Server (32 bits)"><vspace blankLines="0" />
+          The IP address of the video streaming server</t>
+
+          <t hangText="Port (16 bits)"><vspace blankLines="0" />
+          The port of the video in the streaming server.</t>
+          
+          <t hangText="Video (variable length)"><vspace blankLines="0" />
+          The name of the video.</t>
+        </list></t>
+        </section>
+        <section title="Update user">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1001 1001   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Update |  0000 |                                               | 
+    +-+-+-+-+-+-+-+-+                                               |
+    .                                                               .
+    .                     Username                                  .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Update (4 bits)"><vspace blankLines="0" />
+          Define the type of update on the user in the user list (add it to the list, remove it, change its status).</t>
+          <t hangText="Username (variable length)"><vspace blankLines="0" />
+          The name of the user.</t>
+        </list></t>
+        <texttable title="Content of the field Update">
+
+          <ttcol align="center">Type of update</ttcol>
+
+          <ttcol align="center">Update code</ttcol>
+          
+          <c>Add user (status : in main room)</c><c>1010</c><c>Remove user</c><c>0101</c>
+          
+          <c>Add user (status : watching a video)</c><c>1110</c><c>Change status</c><c>1111</c>
+
+        </texttable>
+        </section>
+        <section title="Room entry">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1101 1101   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                       Server  (IP Address)                    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |               Port            |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Server (32 bits)"><vspace blankLines="0" />
+          The IP address of the server streaming the video</t>
+
+          <t hangText="Port (16 bits)"><vspace blankLines="0" />
+          The port of the video in the server.</t>
+        </list></t>
+        </section>
+        <section title="Room exit">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   0010 0010   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+        </section>
+        
+       <section title="Chat send">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1011 1011   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                            Time                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    .                                                               .
+    .                     Message content                           .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Time (32 bits)"><vspace blankLines="0" />
+          The time when the user sent the message (Unix time).</t>
+          
+          <t hangText="Message content (variable length)"><vspace blankLines="0" />
+          The content of the message the user sent.</t>
+        </list></t>
+        </section>
+        <section title="Chat receive">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   0111 0111   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                            Time                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of Username          |                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+    |                            Username                           |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    .                                                               .
+    .                     Message content                           .
+    |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="Time (32 bits)"><vspace blankLines="0" />
+          The time when the user sent the message (Unix time).</t>
+          
+          <t hangText="Size of Username (16 bits)"><vspace blankLines="0" />
+          The size of Username field in bytes.</t>
+          
+          <t hangText="Username (variable length)"><vspace blankLines="0" />
+          The username of the sender.</t>
+          
+          <t hangText="Message content (variable length)"><vspace blankLines="0" />
+          The content of the message the user sent.</t>
+        </list></t>
+        </section>
+        <section title="Chat send">
+
+    <t>
+    <figure align="center">
+    <artwork>
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Size of the data          |      N        |   1111 1111   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     AckType   |    Number     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        </artwork></figure></t>
+    
+
+    <t><list hangIndent="8" style="hanging">
+          <t hangText="AckType (8 bits)"><vspace blankLines="0" />
+          The DataType of the request that is acknowledged.</t>
+          
+          <t hangText="Number (8 bits)"><vspace blankLines="0" />
+          The number of the next request expected.</t>
+        </list></t>
+        </section>
       </section>
 
 
     <section title="Example scenario">
-    <section title="Scenario 1: title">
     <t>
     <figure>
     <artwork>
-MSG 1 from toto to titi
 
-etc
 
 You can also use a figure like this:
 
-     Alice                                            Bob
+     Alice                                            Server
         |                                               |
-        |             Message 1 (Request)               |
-        |----------------------------------------------&gt;|
-        |            (details of the message)           |
+        | Login request (N = 0, 1010 1010)              |
+       1|----------------------------------------------&gt;|0
+        |            (IP, Port, "Alice")                |
+        |                                               |
+        |    "Alice tries to login into the server"     |
         |                                               |
         |                                               |
-        |               Message 2 (Response)            |
-        |&lt;----------------------------------------------|
-        |                   (Details)                   |
+        | ACK (N = 0, 1111 1111)                        |
+       1|&lt;----------------------------------------------|0
+        |            (1010 1010, N = 1)                 |
+        |                                               |
+        | List video (N = 0, 0101 0101)                 |
+       1|&lt;----------------------------------------------|1
+        |            (IP, Port, "Panda")                |
+        |                                               |
+        |   "The server sends to Alice the list of      |
+        |    available videos, here "Panda" "           |
+        |                                               |
+        |                                               |
+        | ACK (N = 1, 1111 1111)                        |
+       1|----------------------------------------------&gt;|1
+        |            (0101 0101, N = 1)                 |
+        |                                               |
+        | Update user (N = 1, 1001 1001)                |
+       1|&lt;----------------------------------------------|2
+        |      (1010 (add : in the main room), "Bob")   |
+        |                                               |
+        | "The server tells Alice another user logs in  |
+        |  the main room, his username is Bob"          |
+        |                                               |
+        |                                               |
+        | ACK (N = 1, 1111 1111)                        |
+       1|----------------------------------------------&gt;|2
+        |            (1001 1001, N = 2)                 |
+        |                                               |
+        | Update user (N = 2, 1001 1001)                |
+       1|&lt;----------------------------------------------|3
+        |        (1111 (change status), "Bob")          |
+        |                                               |
+        | "The server tells Alice that Bob entered in a |
+        |  video room"                                  |           
+        |                                               |
+        |                                               |
+        | ACK (N = 1, 1111 1111)                        |
+       1|----------------------------------------------&gt;|3
+        |            (1001 1001, N = 3)                 |
+        |                                               |
+        | Room entry (N = 1, 1101 1101)                 |
+       2|----------------------------------------------&gt;|3
+        |            (IPVideo, Port)                    |
+        |                                               |
+        | "Alice enters in the video room "Panda""      |
+        |                                               |
+        |                                               |
+        |                                               |
+        | ACK (N = 3, 1111 1111)                        |
+       2|&lt;----------------------------------------------|3
+        |            (1101 1101, N = 2)                 |
+        |                                               |
+        | Update user (N = 3, 1001 1001)                |
+       2|&lt;----------------------------------------------|4
+        |        (1110 (add user : watching), "Bob")    |
+        |                                               |
+        | "The server tells Alice that Bob is in the    |
+        |  same video room"                             |           
+        |                                               |
+        |                                               |
+        | ACK (N = 2, 1111 1111)                        |
+       2|----------------------------------------------&gt;|4
+        |            (1001 1001, N = 4)                 |
+        |                                               |
+        |                                               |
+        | Chat send (N = 2, 1011 1011)                  |
+       3|----------------------------------------------&gt;|4
+        |            (Time, "Hello Worldddddd !")       |
+        |                                               |
+        |"Alice sends a message to everyone in the room"|                                             
+        |                                               |
+        |                                               |
+        | ACK (N = 4, 1111 1111)                        |
+       3|&lt;----------------------------------------------|4
+        |            (1011 1011, N = 3)                 |
+        |                                               |
+        | Chat receive (N = 4 , 0111 0111)              |
+       3|&lt;----------------------------------------------|5
+        |    (Time, UserSize = 3, "Bob", "Hello")       |
+        |                                               |
+        |"Bob, being in the same room, received Alice's |
+        | message and replied with "Hello" "            |
+        |                                               |
+        |                                               |
+        | ACK (N = 3, 1111 1111)                        |
+       3|----------------------------------------------&gt;|5
+        |            (0111 0111, N = 5)                 |
         
     </artwork></figure></t>
     
-    </section><!--End of example 1-->
     </section><!--End of examples-->
 
     <section title="Conclusion">
         <t>
-            Your conclusion goes here.
+            This protocol can be used either on top of TCP or UDP, as it implements its own reliability method. It satisfies most of the needs of the application Chat While Watching, with the exception of the video stream, which must be satisfied by RTP.
         </t>
     </section>
 
-    <section title="xml2rfc Features">
-      <t>In this sample file, the following sections show how to use some of the 
-      features of supported by xml2rfc.  This is a non-exhaustive list.  It is up
-      to each group to decide which of these features (if any) to use in the
-      protocol specification.</t>
+
+
+    
+
       
-      <t> This document is a modified version of the Internet-Draft template by 
-      Elwyn Davies, available on the IETF 
-      <xref target="IDSample"> website</xref>. </t>
-    </section>
 
-    <section anchor="simple_list" title="Simple List">
-      <t>List styles: 'empty', 'symbols', 'letters', 'numbers', 'hanging',
-      'format'.</t>
+    
 
-      <t><list style="symbols">
-          <t>First bullet</t>
+      
 
-          <t>Second bullet</t>
-        </list> You can write text here as well.</t>
-    </section>
+        
 
-    <section title="Figures">
-      <t>Figures should not exceed 69 characters wide to allow for the indent
-      of sections.</t>
+    
 
-      <figure align="center" anchor="xml_happy">
-        <preamble>Preamble text - can be omitted or empty.</preamble>
-
-        <artwork align="left"><![CDATA[
-+-----------------------+
-| Use XML, be Happy :-) |
-|_______________________|
-            ]]></artwork>
-
-        <postamble>Cross-references allowed in pre- and postamble. <xref
-        target="min_ref" />.</postamble>
-      </figure>
-
-      <t>The CDATA means you don't need to escape meta-characters (especially
-      &lt;(&amp;lt;) and &amp;(&amp;amp;)) but is not essential.
-      Figures may also have a title attribute but it won't be displayed unless
-      there is also an anchor. White space, both horizontal and vertical, is
-      significant in figures even if you don't use CDATA.</t>
-    </section>
-
-    <!-- This PI places the pagebreak correctly (before the section title) in the text output. -->
-
-    <?rfc needLines="8" ?>
-
-    <section title="Subsections and Tables">
-      <section title="A Subsection">
-        <t>By default 3 levels of nesting show in table of contents but that
-        can be adjusted with the value of the "tocdepth" processing
-        instruction.</t>
-      </section>
-
-      <section title="Tables">
-        <t>.. are very similar to figures:</t>
-
-        <texttable anchor="table_example" title="A Very Simple Table">
-          <preamble>Tables use ttcol to define column headers and widths.
-          Every cell then has a "c" element for its content.</preamble>
-
-          <ttcol align="center">ttcol #1</ttcol>
-
-          <ttcol align="center">ttcol #2</ttcol>
-
-          <c>c #1</c>
-
-          <c>c #2</c>
-
-          <c>c #3</c>
-
-          <c>c #4</c>
-
-          <c>c #5</c>
-
-          <c>c #6</c>
-
-          <postamble>which is a very simple example.</postamble>
-        </texttable>
-      </section>
-    </section>
-
-    <section anchor="nested_lists" title="More about Lists">
-      <t>Lists with 'hanging labels': the list item is indented the amount of
-      the hangIndent: <list hangIndent="8" style="hanging">
-          <t hangText="short">With a label shorter than the hangIndent.</t>
-
-          <t hangText="fantastically long label">With a label longer than the
-          hangIndent.</t>
-
-          <t hangText="vspace_trick"><vspace blankLines="0" />Forces the new
-          item to start on a new line.</t>
-        </list></t>
-
-      <!-- It would be nice to see the next piece (12 lines) all on one page. -->
-
-      <?rfc needLines="12" ?>
-
-      <t>Simulating more than one paragraph in a list item using
-      &lt;vspace&gt;: <list style="letters">
-          <t>First, a short item.</t>
-
-          <t>Second, a longer list item.<vspace blankLines="1" /> And
-          something that looks like a separate pararaph..</t>
-        </list></t>
-
-      <t>Simple indented paragraph using the "empty" style: <list
-          hangIndent="10" style="empty">
-          <t>The quick, brown fox jumped over the lazy dog and lived to fool
-          many another hunter in the great wood in the west.</t>
-        </list></t>
-
-      <section title="Numbering Lists across Lists and Sections">
-        <t>Numbering items continuously although they are in separate
-        &lt;list&gt; elements, maybe in separate sections using the "format"
-        style and a "counter" variable.</t>
-
-        <t>First list: <list counter="reqs" hangIndent="4" style="format R%d">
-            <t>#1</t>
-
-            <t>#2</t>
-
-            <t>#3</t>
-          </list> Specify the indent explicitly so that all the items line up
-        nicely.</t>
-
-        <t>Second list: <list counter="reqs" hangIndent="4" style="format R%d">
-            <t>#4</t>
-
-            <t>#5</t>
-
-            <t>#6</t>
-          </list></t>
-      </section>
-
-      <section title="Where the List Numbering Continues">
-        <t>List continues here.</t>
-
-        <t>Third list: <list counter="reqs" hangIndent="4" style="format R%d">
-            <t>#7</t>
-
-            <t>#8</t>
-
-            <t>#9</t>
-
-            <t>#10</t>
-          </list> The end of the list.</t>
-      </section>
-    </section>
-
-    <section anchor="codeExample"
-             title="Example of Code or MIB Module To Be Extracted">
-      <figure>
-        <preamble>The &lt;artwork&gt; element has a number of extra attributes
-        that can be used to substitute a more aesthetically pleasing rendition
-        into HTML output while continuing to use the ASCII art version in the
-        text and nroff outputs (see the xml2rfc README for details). It also
-        has a "type" attribute. This is currently ignored except in the case
-        'type="abnf"'. In this case the "artwork" is expected to contain a
-        piece of valid Augmented Backus-Naur Format (ABNF) grammar. This will
-        be syntax checked by xml2rfc and any errors will cause a fatal error
-        if the "strict" processing instruction is set to "yes". The ABNF will
-        also be colorized in HTML output to highlight the syntactic
-        components. Checking of additional "types" may be provided in future
-        versions of xml2rfc.</preamble>
-
-        <artwork><![CDATA[
-
-/**** an example C program */
-
-#include <stdio.h>
-
-void
-main(int argc, char *argv[])
-{
-    int i;
-
-    printf("program arguments are:\n");
-    for (i = 0; i < argc; i++) {
-        printf("%d: \"%s\"\n", i, argv[i]);
-    }
-
-    exit(0);
-} /* main */
-
-/* end of file */
-
-            ]]></artwork>
-      </figure>
-    </section>
-
-    <section anchor="Acknowledgements" title="Acknowledgements">
-      <t>This template was derived from an initial version written by Pekka
-      Savola and contributed by him to the xml2rfc project.</t>
-
-      <t>This document is part of a plan to make xml2rfc indispensable <xref
-      target="DOMINATION"></xref>.</t>
-    </section>
 
   </middle>
 
@@ -522,78 +663,10 @@ main(int argc, char *argv[])
      with a value containing a set of directories to search.  These can be either in the local
      filing system or remote ones accessed by http (http://domain/dir/... ).-->
 
-    <references title="Normative References">
-      <!--?rfc include="http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml"?-->
 
-
-      <reference anchor="min_ref">
-        <!-- the following is the minimum to make xml2rfc happy -->
-
-        <front>
-          <title>Minimal Reference</title>
-
-          <author initials="authInitials" surname="authSurName">
-            <organization></organization>
-          </author>
-
-          <date year="2006" />
-        </front>
-      </reference>
-    </references>
-
-    <references title="Informative References">
-      <!-- Here we use entities that we defined at the beginning. -->
-      <!-- A reference written by by an organization not a person. -->
-
-      <reference anchor="DOMINATION"
-                 target="http://www.example.com/dominator.html">
-        <front>
-          <title>Ultimate Plan for Taking Over the World</title>
-
-          <author>
-            <organization>Mad Dominators, Inc.</organization>
-          </author>
-
-          <date year="1984" />
-        </front>
-      </reference>
-      
-      <reference anchor="IDSample"
-       target="http://tools.ietf.org/tools/templates/draft-davies-template-bare.txt">
-        
-
-        <front>
-          <title>Internet Draft Sample</title>
-
-          <author initials="E. D." surname="Davies">
-            <organization></organization>
-          </author>
-
-          <date year="2006" />
-        </front>
-      </reference>
-    </references>
     
 
-    <section anchor="app-additional" title="Additional Stuff">
-      <t>This becomes an Appendix.</t>
-    </section>
 
-    <!-- Change Log
-
-v00 2006-03-15  EBD   Initial version
-
-v01 2006-04-03  EBD   Moved PI location back to position 1 -
-                      v3.1 of XMLmind is better with them at this location.
-v02 2007-03-07  AH    removed extraneous nested_list attribute,
-                      other minor corrections
-v03 2007-03-09  EBD   Added comments on null IANA sections and fixed heading capitalization.
-                      Modified comments around figure to reflect non-implementation of
-                      figure indent control.  Put in reference using anchor="DOMINATION".
-                      Fixed up the date specification comments to reflect current truth.
-v04 2007-03-09 AH     Major changes: shortened discussion of PIs,
-                      added discussion of rfc include.
-v05 2007-03-10 EBD    Added preamble to C program example to tell about ABNF and alternative 
-                      images. Removed meta-characters from comments (causes problems).  -->
+    
   </back>
 </rfc>
