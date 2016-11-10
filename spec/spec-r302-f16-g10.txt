@@ -7,7 +7,7 @@
                                                                 N. Louis
                                                                 A. TRINH
                                                         Telecom Bretagne
-                                                        November 7, 2016
+                                                       November 10, 2016
 
 
              Group 10: c2w protocol specification proposal
@@ -37,10 +37,11 @@ Table of Contents
      2.8.  Room exit . . . . . . . . . . . . . . . . . . . . . . . .   6
      2.9.  Chat send . . . . . . . . . . . . . . . . . . . . . . . .   6
      2.10. Chat receive  . . . . . . . . . . . . . . . . . . . . . .   7
-     2.11. Chat send . . . . . . . . . . . . . . . . . . . . . . . .   8
+     2.11. Acknowledgement system  . . . . . . . . . . . . . . . . .   8
+     2.12. Acknowledgement frame format  . . . . . . . . . . . . . .   8
    3.  Example scenario  . . . . . . . . . . . . . . . . . . . . . .   8
-   4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  10
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  10
+   4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
 
 1.  Introduction
 
@@ -49,15 +50,15 @@ Table of Contents
    login request to the server using the c2w login format.  If the
    server approves the login it will send an acknowledgment followed by
    the list of accessible video streams, and the list of currently
-   connected users across multiple frames.  The user can then decide to
 
 
 
-DUVAL, et al.             Expires May 11, 2017                  [Page 1]
+DUVAL, et al.             Expires May 14, 2017                  [Page 1]
 
                           Group 10 c2w protocol            November 2016
 
 
+   connected users across multiple frames.  The user can then decide to
    stay in the main chatroom (without video) or switch to a video
    chatroom using a request with the c2w room entry format.  The user
    can then send chat messages to the server which will then transmit
@@ -108,8 +109,7 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 1]
 
 
 
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 2]
+DUVAL, et al.             Expires May 14, 2017                  [Page 2]
 
                           Group 10 c2w protocol            November 2016
 
@@ -153,6 +153,10 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 2]
 
 2.3.  Login request
 
+   This message is sent when the client wants to connect to the server.
+   The server the client wants to connect to is the recipient of the
+   message (the IP address is not included in this protocol, as it is
+   already in the IP layer).
 
 
 
@@ -161,11 +165,7 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 2]
 
 
 
-
-
-
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 3]
+DUVAL, et al.             Expires May 14, 2017                  [Page 3]
 
                           Group 10 c2w protocol            November 2016
 
@@ -175,8 +175,6 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 3]
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
        |     Size of the data          |      N        |   1010 1010   |
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-       |                       Server  (IP Address)                    |
-       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
        |               Port            |                               |
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
        .                                                               .
@@ -184,16 +182,20 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 3]
        |                                                               |
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-   Server (32 bits)
-           The IP address of the server to connect to.
-
    Port (16 bits)
-           The port of the server to connect to.
+           The port of the server the user wants to connect to.
 
    Login (variable length)
            The login of the user.
 
+   The server that receive such a message will have two choices, either
+   it accepts the connection by answering with an ACK frame(see DataType
+   table) or it refuses it by anwering with a Login denial frame.
+
 2.4.  Login denial
+
+   The server can send this frame to refuse a connection request (if the
+   connection is to be accepted a ACK frame will be sent instead).
 
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -210,6 +212,8 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 3]
 
 2.5.  List video
 
+   This type of frame is used by the server to send the information
+   necessary to connect to a video stream.
 
 
 
@@ -217,11 +221,7 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 3]
 
 
 
-
-
-
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 4]
+DUVAL, et al.             Expires May 14, 2017                  [Page 4]
 
                           Group 10 c2w protocol            November 2016
 
@@ -249,6 +249,13 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 4]
    Video (variable length)
            The name of the video.
 
+   The frame type is List video, but it does not mean one frame contains
+   the entire list by itself.  Each frame contains the identification
+   for one video only (if there are X videos to list the server will
+   have to send X frame).  Note that the client does NOT know how many
+   video there are beforehand, but the acknowledgement system prevent
+   the loss of any video ID.
+
 2.6.  Update user
 
        0                   1                   2                   3
@@ -264,23 +271,19 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 4]
        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
    Update (4 bits)
-           Defines the type of update on the user in the user list (add
+           Define the type of update on the user in the user list (add
            it to the list, remove it, change its status).
 
-   Username (variable length)
-           The name of the user.
 
 
 
-
-
-
-
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 5]
+DUVAL, et al.             Expires May 14, 2017                  [Page 5]
 
                           Group 10 c2w protocol            November 2016
 
+
+   Username (variable length)
+           The name of the user.
 
           +--------------------------------------+-------------+
           |            Type of update            | Update code |
@@ -291,7 +294,7 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 5]
           |            Change status             |     1111    |
           +--------------------------------------+-------------+
 
-                                  Update
+                        Content of the field Update
 
 2.7.  Room entry
 
@@ -330,10 +333,7 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 5]
 
 
 
-
-
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 6]
+DUVAL, et al.             Expires May 14, 2017                  [Page 6]
 
                           Group 10 c2w protocol            November 2016
 
@@ -389,12 +389,33 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 6]
 
 
 
-DUVAL, et al.             Expires May 11, 2017                  [Page 7]
+DUVAL, et al.             Expires May 14, 2017                  [Page 7]
 
                           Group 10 c2w protocol            November 2016
 
 
-2.11.  Chat send
+2.11.  Acknowledgement system
+
+   Both ends of the connection shall maintain at all time two memory
+   values, Ns and Nr :
+
+   Ns (8 bits)
+           The number of non-ACK frame sent until now, and the N of the
+           next frame to be sent.
+
+   Nr (8 bits)
+           The number of non-ACK frame received until now, and the N of
+           the next frame to be received.
+
+   After each successful emission / reception of a non-ACK frame these
+   values will be updated (+1 to Ns after sending a frame, + 1 to Nr
+   after receiving a frame).  When receiving a frame, its N field will
+   be compared to the Nr value before considering it successful.  If the
+   values are not the same the frame shall be ignored.  Adter sending a
+   frame, if the sender does not receive an ACK with the Number Field
+   equals to Ns in time, the frame will be resent.
+
+2.12.  Acknowledgement frame format
 
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -408,126 +429,137 @@ DUVAL, et al.             Expires May 11, 2017                  [Page 7]
            The DataType of the request that is acknowledged.
 
    Number (8 bits)
-           The number of the next request expected.
+           Contains the Nr value.
 
 3.  Example scenario
 
 
 
-   You can also use a figure like this:
+
 
         Alice                                            Server
-           |                                               |
-           | Login request (N = 0, 1010 1010)              |
-          1|---------------------------------------------->|0
-           |            (IP, Port, "Alice")                |
-           |                                               |
-           |    "Alice tries to login into the server"     |
-           |                                               |
-           |                                               |
-           | ACK (N = 0, 1111 1111)                        |
-          1|<----------------------------------------------|0
-           |            (1010 1010, N = 1)                 |
-           |                                               |
-           | List video (N = 0, 0101 0101)                 |
-          1|<----------------------------------------------|1
-           |            (IP, Port, "Panda")                |
-           |                                               |
-           |   "The server sends to Alice the list of      |
-           |    available videos, here "Panda" "           |
-           |                                               |
-           |                                               |
-           | ACK (N = 1, 1111 1111)                        |
-          1|---------------------------------------------->|1
-           |            (0101 0101, N = 1)                 |
-           |                                               |
-           | Update user (N = 1, 1001 1001)                |
+      Ns:Nr|                                               |Ns:Nr
+           |               Login request                   |
+           |---------------------------------------------->|
+        1:0|    (Ox0005,Ox00,OxAA,Port,Ox416c696365)       |0:1
 
 
 
-DUVAL, et al.             Expires May 11, 2017                  [Page 8]
+DUVAL, et al.             Expires May 14, 2017                  [Page 8]
 
                           Group 10 c2w protocol            November 2016
 
 
-          1|<----------------------------------------------|2
-           |      (1010 (add : in the main room), "Bob")   |
+           |                                               |
+           |    "Alice tries to login into the server"     |
+           |                                               |
+           |                                               |
+           |                   ACK                         |
+           |<----------------------------------------------|
+           |    (Ox0002,Ox00,OxFF,OxAA,Ox01)               |
+           |                                               |
+           |               List video                      |
+           |<----------------------------------------------|
+        1:1|   (Ox000F,Ox00,Ox55,IP,Port,0x50616e6461)     |1:1
+           |                                               |
+           |   "The server sends to Alice the list of      |
+           |    available videos with one video ID/frame   |
+           |    , here only one frame, for "Panda" "       |
+           |                                               |
+           |                   ACK                         |
+           |---------------------------------------------->|
+           |   (Ox0002,Ox01,OxFF,Ox55,Ox01)                |
+           |                                               |
+           |               Update user                     |
+           |<----------------------------------------------|
+        1:2|   (Ox0004,Ox01,Ox99,OxA0,Ox426f62)            |2:1
            |                                               |
            | "The server tells Alice another user logs in  |
            |  the main room, his username is Bob"          |
            |                                               |
            |                                               |
-           | ACK (N = 1, 1111 1111)                        |
-          1|---------------------------------------------->|2
-           |            (1001 1001, N = 2)                 |
+           |                   ACK                         |
+           |---------------------------------------------->|
+           |   (Ox0002,Ox01,OxFF,Ox99,Ox02)                |
            |                                               |
-           | Update user (N = 2, 1001 1001)                |
-          1|<----------------------------------------------|3
-           |        (1111 (change status), "Bob")          |
+           |                Update user                    |
+           |<----------------------------------------------|
+        1:3|   (Ox0004,Ox02,Ox99,OxF0,Ox426f62)            |3:1
            |                                               |
            | "The server tells Alice that Bob entered in a |
            |  video room"                                  |
            |                                               |
            |                                               |
-           | ACK (N = 1, 1111 1111)                        |
-          1|---------------------------------------------->|3
-           |            (1001 1001, N = 3)                 |
+           |                    ACK                        |
+           |---------------------------------------------->|
+           |   (Ox0002,Ox01,OxFF,Ox99,Ox03)                |
            |                                               |
-           | Room entry (N = 1, 1101 1101)                 |
-          2|---------------------------------------------->|3
-           |            (IPVideo, Port)                    |
+           |                 Room entry                    |
+           |---------------------------------------------->|
+        2:3|   (Ox0006,Ox01,OxDD,IP,Port)                  |3:2
            |                                               |
+
+
+
+DUVAL, et al.             Expires May 14, 2017                  [Page 9]
+
+                          Group 10 c2w protocol            November 2016
+
+
            | "Alice enters in the video room "Panda""      |
            |                                               |
            |                                               |
            |                                               |
-           | ACK (N = 3, 1111 1111)                        |
-          2|<----------------------------------------------|3
-           |            (1101 1101, N = 2)                 |
+           |                    ACK                        |
+           |<----------------------------------------------|
+           |    (Ox0002,Ox03,OxFF,OxDD,Ox02)               |
            |                                               |
-           | Update user (N = 3, 1001 1001)                |
-          2|<----------------------------------------------|4
-           |        (1110 (add user : watching), "Bob")    |
+           |                  Update user                  |
+           |<----------------------------------------------|
+        2:4|    (Ox0004,Ox03,Ox99,OxE0,Ox426f62)           |4:2
            |                                               |
            | "The server tells Alice that Bob is in the    |
            |  same video room"                             |
            |                                               |
            |                                               |
-           | ACK (N = 2, 1111 1111)                        |
-          2|---------------------------------------------->|4
-           |            (1001 1001, N = 4)                 |
+           |                    ACK                        |
+           |---------------------------------------------->|
+           |    (Ox0002,Ox02,OxFF,Ox99,Ox04)               |
            |                                               |
            |                                               |
-
-
-
-DUVAL, et al.             Expires May 11, 2017                  [Page 9]
-
-                          Group 10 c2w protocol            November 2016
-
-
-           | Chat send (N = 2, 1011 1011)                  |
-          3|---------------------------------------------->|4
-           |            (Time, "Hello Worldddddd !")       |
+           |                    Chat send                  |
+           |---------------------------------------------->|
+        3:4|    (0x0006,Ox02,OxBB,Time,Ox4869)             |4:3
            |                                               |
            |"Alice sends a message to everyone in the room"|
            |                                               |
            |                                               |
-           | ACK (N = 4, 1111 1111)                        |
-          3|<----------------------------------------------|4
-           |            (1011 1011, N = 3)                 |
+           |                   ACK                         |
+           |<----------------------------------------------|
+           |    (Ox0002,Ox04,OxFF,OxBB,Ox03)               |
            |                                               |
-           | Chat receive (N = 4 , 0111 0111)              |
-          3|<----------------------------------------------|5
-           |    (Time, UserSize = 3, "Bob", "Hello")       |
+           |                 Chat receive                  |
+           |<----------------------------------------------|
+        3:5|  (Ox000A,Ox04,Ox77,Time,Ox03,Ox426f62,Ox4869) |5:3
            |                                               |
            |"Bob, being in the same room, received Alice's |
-           | message and replied with "Hello" "            |
+           | message and replied with "Hi" too"            |
            |                                               |
            |                                               |
-           | ACK (N = 3, 1111 1111)                        |
-          3|---------------------------------------------->|5
-           |            (0111 0111, N = 5)                 |
+           |                   ACK                         |
+           |---------------------------------------------->|
+           |    (Ox0002,Ox03,OxFF,Ox77,Ox05)               |
+
+
+
+
+
+
+
+
+DUVAL, et al.             Expires May 14, 2017                 [Page 10]
+
+                          Group 10 c2w protocol            November 2016
 
 
 4.  Conclusion
@@ -553,13 +585,6 @@ Authors' Addresses
    France
 
    Email: gsaibro@gmail.com
-
-
-
-
-DUVAL, et al.             Expires May 11, 2017                 [Page 10]
-
-                          Group 10 c2w protocol            November 2016
 
 
    Ndzamba Louis
@@ -588,29 +613,4 @@ DUVAL, et al.             Expires May 11, 2017                 [Page 10]
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-DUVAL, et al.             Expires May 11, 2017                 [Page 11]
+DUVAL, et al.             Expires May 14, 2017                 [Page 11]

@@ -263,7 +263,9 @@
 
         </texttable>
       </section>
+      
       <section title="Login request">
+      <t> This message is sent when the client wants to connect to the server. The server the client wants to connect to is the recipient of the message (the IP address is not included in this protocol, as it is already in the IP layer).</t>
 
     <t>
     <figure align="center">
@@ -272,8 +274,6 @@
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |     Size of the data          |      N        |   1010 1010   |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                       Server  (IP Address)                    |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |               Port            |                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
@@ -285,17 +285,18 @@
     
 
     <t><list hangIndent="8" style="hanging">
-          <t hangText="Server (32 bits)"><vspace blankLines="0" />
-          The IP address of the server to connect to.</t>
-
+    
           <t hangText="Port (16 bits)"><vspace blankLines="0" />
-          The port of the server to connect to.</t>
+          The port of the server the user wants to connect to.</t>
           
           <t hangText="Login (variable length)"><vspace blankLines="0" />
           The login of the user.</t>
         </list></t>
+        <t>The server that receive such a message will have two choices, either it accepts the connection by answering with an ACK frame(see DataType table) or it refuses it by anwering with a Login denial frame.</t>
         </section>
+        
         <section title="Login denial">
+        <t>The server can send this frame to refuse a connection request (if the connection is to be accepted a ACK frame will be sent instead).</t>
 
     <t>
     <figure align="center">
@@ -318,6 +319,7 @@
         </list></t>
         </section>
         <section title="List video">
+        <t>This type of frame is used by the server to send the information necessary to connect to a video stream.</t>
 
     <t>
     <figure align="center">
@@ -348,6 +350,9 @@
           <t hangText="Video (variable length)"><vspace blankLines="0" />
           The name of the video.</t>
         </list></t>
+        <t>The frame type is List video, but it does not mean one frame contains the entire list by itself.
+        Each frame contains the identification for one video only (if there are X videos to list the server will have to send X frame).
+        Note that the client does NOT know how many video there are beforehand, but the acknowledgement system prevent the loss of any video ID.</t>
         </section>
         <section title="Update user">
 
@@ -489,7 +494,25 @@
           The content of the message the user sent.</t>
         </list></t>
         </section>
-        <section title="Chat send">
+        
+        
+        <section title="Acknowledgement system">
+        <t>Both ends of the connection shall maintain at all time two memory values, Ns and Nr :
+        </t>
+        <t><list hangIndent="8" style="hanging">
+          <t hangText="Ns (8 bits)"><vspace blankLines="0" />
+          The number of non-ACK frame sent until now, and the N of the next frame to be sent.</t>
+          
+          <t hangText="Nr (8 bits)"><vspace blankLines="0" />
+          The number of non-ACK frame received until now, and the N of the next frame to be received.</t>
+        </list></t>
+        <t>After each successful emission / reception of a non-ACK frame these values will be updated (+1 to Ns after sending a frame, + 1 to Nr after receiving a frame).
+        When receiving a frame, its N field will be compared to the Nr value before considering it successful. If the values are not the same the frame shall be ignored.
+        Adter sending a frame, if the sender does not receive an ACK with the Number Field equals to Ns in time, the frame will be resent.</t>
+        </section>
+        
+        
+        <section title="Acknowledgement frame format">
 
     <t>
     <figure align="center">
@@ -509,9 +532,12 @@
           The DataType of the request that is acknowledged.</t>
           
           <t hangText="Number (8 bits)"><vspace blankLines="0" />
-          The number of the next request expected.</t>
+          Contains the Nr value.</t>
         </list></t>
         </section>
+        
+        
+        
       </section>
 
 
@@ -521,104 +547,104 @@
     <artwork>
 
 
-You can also use a figure like this:
+
 
      Alice                                            Server
-        |                                               |
-        | Login request (N = 0, 1010 1010)              |
-       1|----------------------------------------------&gt;|0
-        |            (IP, Port, "Alice")                |
+   Ns:Nr|                                               |Ns:Nr
+        |               Login request                   |
+        |----------------------------------------------&gt;|
+     1:0|    (Ox0005,Ox00,OxAA,Port,Ox416c696365)       |0:1
         |                                               |
         |    "Alice tries to login into the server"     |
         |                                               |
         |                                               |
-        | ACK (N = 0, 1111 1111)                        |
-       1|&lt;----------------------------------------------|0
-        |            (1010 1010, N = 1)                 |
+        |                   ACK                         |
+        |&lt;----------------------------------------------|
+        |    (Ox0002,Ox00,OxFF,OxAA,Ox01)               |
         |                                               |
-        | List video (N = 0, 0101 0101)                 |
-       1|&lt;----------------------------------------------|1
-        |            (IP, Port, "Panda")                |
+        |               List video                      |
+        |&lt;----------------------------------------------|
+     1:1|   (Ox000F,Ox00,Ox55,IP,Port,0x50616e6461)     |1:1
         |                                               |
         |   "The server sends to Alice the list of      |
-        |    available videos, here "Panda" "           |
+        |    available videos with one video ID/frame   |
+        |    , here only one frame, for "Panda" "       |
         |                                               |
+        |                   ACK                         |
+        |----------------------------------------------&gt;|
+        |   (Ox0002,Ox01,OxFF,Ox55,Ox01)                |
         |                                               |
-        | ACK (N = 1, 1111 1111)                        |
-       1|----------------------------------------------&gt;|1
-        |            (0101 0101, N = 1)                 |
-        |                                               |
-        | Update user (N = 1, 1001 1001)                |
-       1|&lt;----------------------------------------------|2
-        |      (1010 (add : in the main room), "Bob")   |
+        |               Update user                     |
+        |&lt;----------------------------------------------|
+     1:2|   (Ox0004,Ox01,Ox99,OxA0,Ox426f62)            |2:1
         |                                               |
         | "The server tells Alice another user logs in  |
         |  the main room, his username is Bob"          |
         |                                               |
         |                                               |
-        | ACK (N = 1, 1111 1111)                        |
-       1|----------------------------------------------&gt;|2
-        |            (1001 1001, N = 2)                 |
+        |                   ACK                         |
+        |----------------------------------------------&gt;|
+        |   (Ox0002,Ox01,OxFF,Ox99,Ox02)                |
         |                                               |
-        | Update user (N = 2, 1001 1001)                |
-       1|&lt;----------------------------------------------|3
-        |        (1111 (change status), "Bob")          |
+        |                Update user                    |
+        |&lt;----------------------------------------------|
+     1:3|   (Ox0004,Ox02,Ox99,OxF0,Ox426f62)            |3:1
         |                                               |
         | "The server tells Alice that Bob entered in a |
         |  video room"                                  |           
         |                                               |
         |                                               |
-        | ACK (N = 1, 1111 1111)                        |
-       1|----------------------------------------------&gt;|3
-        |            (1001 1001, N = 3)                 |
+        |                    ACK                        |
+        |----------------------------------------------&gt;|
+        |   (Ox0002,Ox01,OxFF,Ox99,Ox03)                |
         |                                               |
-        | Room entry (N = 1, 1101 1101)                 |
-       2|----------------------------------------------&gt;|3
-        |            (IPVideo, Port)                    |
+        |                 Room entry                    |
+        |----------------------------------------------&gt;|
+     2:3|   (Ox0006,Ox01,OxDD,IP,Port)                  |3:2
         |                                               |
         | "Alice enters in the video room "Panda""      |
         |                                               |
         |                                               |
         |                                               |
-        | ACK (N = 3, 1111 1111)                        |
-       2|&lt;----------------------------------------------|3
-        |            (1101 1101, N = 2)                 |
+        |                    ACK                        |
+        |&lt;----------------------------------------------|
+        |    (Ox0002,Ox03,OxFF,OxDD,Ox02)               |
         |                                               |
-        | Update user (N = 3, 1001 1001)                |
-       2|&lt;----------------------------------------------|4
-        |        (1110 (add user : watching), "Bob")    |
+        |                  Update user                  |
+        |&lt;----------------------------------------------|
+     2:4|    (Ox0004,Ox03,Ox99,OxE0,Ox426f62)           |4:2
         |                                               |
         | "The server tells Alice that Bob is in the    |
         |  same video room"                             |           
         |                                               |
         |                                               |
-        | ACK (N = 2, 1111 1111)                        |
-       2|----------------------------------------------&gt;|4
-        |            (1001 1001, N = 4)                 |
+        |                    ACK                        |
+        |----------------------------------------------&gt;|
+        |    (Ox0002,Ox02,OxFF,Ox99,Ox04)               |
         |                                               |
         |                                               |
-        | Chat send (N = 2, 1011 1011)                  |
-       3|----------------------------------------------&gt;|4
-        |            (Time, "Hello Worldddddd !")       |
+        |                    Chat send                  |
+        |----------------------------------------------&gt;|
+     3:4|    (0x0006,Ox02,OxBB,Time,Ox4869)             |4:3
         |                                               |
         |"Alice sends a message to everyone in the room"|                                             
         |                                               |
         |                                               |
-        | ACK (N = 4, 1111 1111)                        |
-       3|&lt;----------------------------------------------|4
-        |            (1011 1011, N = 3)                 |
+        |                   ACK                         |
+        |&lt;----------------------------------------------|
+        |    (Ox0002,Ox04,OxFF,OxBB,Ox03)               |
         |                                               |
-        | Chat receive (N = 4 , 0111 0111)              |
-       3|&lt;----------------------------------------------|5
-        |    (Time, UserSize = 3, "Bob", "Hello")       |
+        |                 Chat receive                  |
+        |&lt;----------------------------------------------|
+     3:5|  (Ox000A,Ox04,Ox77,Time,Ox03,Ox426f62,Ox4869) |5:3
         |                                               |
         |"Bob, being in the same room, received Alice's |
-        | message and replied with "Hello" "            |
+        | message and replied with "Hi" too"            |
         |                                               |
         |                                               |
-        | ACK (N = 3, 1111 1111)                        |
-       3|----------------------------------------------&gt;|5
-        |            (0111 0111, N = 5)                 |
+        |                   ACK                         |
+        |----------------------------------------------&gt;|
+        |    (Ox0002,Ox03,OxFF,Ox77,Ox05)               |
         
     </artwork></figure></t>
     
