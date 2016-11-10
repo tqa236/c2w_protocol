@@ -39,7 +39,9 @@ Table of Contents
      2.10. Chat receive  . . . . . . . . . . . . . . . . . . . . . .   7
      2.11. Acknowledgement system  . . . . . . . . . . . . . . . . .   8
      2.12. Acknowledgement frame format  . . . . . . . . . . . . . .   8
-   3.  Example scenario  . . . . . . . . . . . . . . . . . . . . . .   8
+   3.  Examples scenario . . . . . . . . . . . . . . . . . . . . . .   8
+     3.1.  Example scenario 1 (Complete Scenario)  . . . . . . . . .   8
+     3.2.  Example scenario 2 (Login scenario) . . . . . . . . . . .  11
    4.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  11
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
 
@@ -48,8 +50,6 @@ Table of Contents
    The Chat While Watching application is a video streaming service
    associated with chatrooms for each video stream.  The client sends a
    login request to the server using the c2w login format.  If the
-   server approves the login it will send an acknowledgment followed by
-   the list of accessible video streams, and the list of currently
 
 
 
@@ -58,6 +58,8 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 1]
                           Group 10 c2w protocol            November 2016
 
 
+   server approves the login it will send an acknowledgment followed by
+   the list of accessible video streams, and the list of currently
    connected users across multiple frames.  The user can then decide to
    stay in the main chatroom (without video) or switch to a video
    chatroom using a request with the c2w room entry format.  The user
@@ -95,16 +97,14 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 1]
    N (8 bits)
            The numerotation of the frame sent, used to prevent frame
            loss by comparing it to the number the recipient is
-           expecting.
+           expecting.When the user send a request , the numerotation
+           used is Ns and for the server when it sends a request , the
+           numerotation used is Nr.The numerotation N in the protocol is
+           used for both as Ns and Nr.
 
    DataType (8 bits)
            This value represents the type of the data transported in
            Message Data.
-
-   Message Data (variable lenght)
-           This field contains the important part of the frame.  The
-           length of this field is limited by the Size of the data
-           field, to about 65 000 bytes.
 
 
 
@@ -113,6 +113,11 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 2]
 
                           Group 10 c2w protocol            November 2016
 
+
+   Message Data (variable lenght)
+           This field contains the important part of the frame.  The
+           length of this field is limited by the Size of the data
+           field, to about 65 000 bytes.
 
 2.2.  Content of DataType
 
@@ -157,11 +162,6 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 2]
    The server the client wants to connect to is the recipient of the
    message (the IP address is not included in this protocol, as it is
    already in the IP layer).
-
-
-
-
-
 
 
 
@@ -431,7 +431,9 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 7]
    Number (8 bits)
            Contains the Nr value.
 
-3.  Example scenario
+3.  Examples scenario
+
+3.1.  Example scenario 1 (Complete Scenario)
 
 
 
@@ -440,8 +442,6 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 7]
         Alice                                            Server
       Ns:Nr|                                               |Ns:Nr
            |               Login request                   |
-           |---------------------------------------------->|
-        1:0|    (Ox0005,Ox00,OxAA,Port,Ox416c696365)       |0:1
 
 
 
@@ -450,13 +450,16 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 8]
                           Group 10 c2w protocol            November 2016
 
 
+           |---------------------------------------------->|
+        1:0|    (Ox0005,Ox00,OxAA,Port,Ox416c696365)       |0:1
            |                                               |
            |    "Alice tries to login into the server"     |
            |                                               |
            |                                               |
            |                   ACK                         |
            |<----------------------------------------------|
-           |    (Ox0002,Ox00,OxFF,OxAA,Ox01)               |
+           |         (Ox0002,Ox00,OxFF,OxAA,Ox01)          |
+           |              "Login sucessful"                |
            |                                               |
            |               List video                      |
            |<----------------------------------------------|
@@ -495,9 +498,6 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 8]
            |   (Ox0002,Ox01,OxFF,Ox99,Ox03)                |
            |                                               |
            |                 Room entry                    |
-           |---------------------------------------------->|
-        2:3|   (Ox0006,Ox01,OxDD,IP,Port)                  |3:2
-           |                                               |
 
 
 
@@ -506,6 +506,9 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 9]
                           Group 10 c2w protocol            November 2016
 
 
+           |---------------------------------------------->|
+        2:3|   (Ox0006,Ox01,OxDD,IP,Port)                  |3:2
+           |                                               |
            | "Alice enters in the video room "Panda""      |
            |                                               |
            |                                               |
@@ -554,12 +557,42 @@ DUVAL, et al.             Expires May 14, 2017                  [Page 9]
 
 
 
-
-
-
 DUVAL, et al.             Expires May 14, 2017                 [Page 10]
 
                           Group 10 c2w protocol            November 2016
+
+
+3.2.  Example scenario 2 (Login scenario)
+
+
+         Paul                                            Server
+      Ns:Nr|                                               |Ns:Nr
+           |                Login request                  |
+           |---------------------------------------------->|
+        0:0|    (Ox0004,Ox00,OxAA,Port,Ox4b 72 69 73)      |0:0
+           |                                               |
+           |   "Paul tries to login into the server with   |
+           |    the Login = "Kris" while the login expected|
+           |    Login = "Paul"."                           |
+           |                                               |
+        0:0|                   Login Denial                |0:1
+           |<----------------------------------------------|
+           |    (Ox000D,Ox00,OxA0,49 6e 76 61 6c 69 64     |
+           |                       20 4c 6f 67 69 6e)      |
+           |                                               |
+           |      Error Message = "Invalid Login"          |
+           |                                               |
+        1:1|                Login request                  |0:1
+           |---------------------------------------------->|
+           |      (Ox0004,Ox00,OxAA,Port,Ox50 61 75 6c)    |
+           |                                               |
+           |   "Paul tries to login into the server with   |
+           |    the Login = "Paul"                         |
+           |                                               |
+        1:1|                   ACK                         |1:2
+           |<----------------------------------------------|
+           |         (Ox0002,Ox00,OxFF,OxAA,Ox01)          |
+           |              "Login sucessful"                |
 
 
 4.  Conclusion
@@ -577,6 +610,12 @@ Authors' Addresses
    France
 
    Email: remy.duval@telecom-bretagne.eu
+
+
+
+DUVAL, et al.             Expires May 14, 2017                 [Page 11]
+
+                          Group 10 c2w protocol            November 2016
 
 
    Guinther SAIBRO
@@ -613,4 +652,21 @@ Authors' Addresses
 
 
 
-DUVAL, et al.             Expires May 14, 2017                 [Page 11]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DUVAL, et al.             Expires May 14, 2017                 [Page 12]

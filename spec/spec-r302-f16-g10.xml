@@ -219,8 +219,10 @@
           The size of the Message Data field in bytes.</t>
 
           <t hangText="N (8 bits)"><vspace blankLines="0" />
-          The numerotation of the frame sent, used to prevent frame loss by comparing it to the number the recipient is expecting.</t>
-         
+          The numerotation of the frame sent, used to prevent frame loss by comparing it to the number the recipient is expecting.When the user send a request , the numerotation used is Ns and for the server when it sends a request , the numerotation used is Nr.The numerotation N in the protocol is used for both as Ns and Nr.  
+
+</t>
+       
           <t hangText="DataType (8 bits)"><vspace blankLines="0" />
           This value represents the type of the data transported in Message Data.</t>
 
@@ -541,7 +543,9 @@
       </section>
 
 
-    <section title="Example scenario">
+    <section title="Examples scenario">
+    
+    <section title="Example scenario 1 (Complete Scenario)">
     <t>
     <figure>
     <artwork>
@@ -560,7 +564,8 @@
         |                                               |
         |                   ACK                         |
         |&lt;----------------------------------------------|
-        |    (Ox0002,Ox00,OxFF,OxAA,Ox01)               |
+        |         (Ox0002,Ox00,OxFF,OxAA,Ox01)          |
+        |              "Login sucessful"                |
         |                                               |
         |               List video                      |
         |&lt;----------------------------------------------|
@@ -647,6 +652,44 @@
         |    (Ox0002,Ox03,OxFF,Ox77,Ox05)               |
         
     </artwork></figure></t>
+    </section>
+
+    <section title="Example scenario 2 (Login scenario)">
+    <t>
+    <figure>
+    <artwork>
+
+      Paul                                            Server
+   Ns:Nr|                                               |Ns:Nr
+        |                Login request                  |
+        |----------------------------------------------&gt;|
+     0:0|    (Ox0004,Ox00,OxAA,Port,Ox4b 72 69 73)      |0:0
+        |                                               |
+        |   "Paul tries to login into the server with   |
+        |    the Login = "Kris" while the login expected|
+        |    Login = "Paul"."                           |
+        |                                               |
+     0:0|                   Login Denial                |0:1
+        |&lt;----------------------------------------------|
+        |    (Ox000D,Ox00,OxA0,49 6e 76 61 6c 69 64     |
+        |                       20 4c 6f 67 69 6e)      |
+        |                                               |
+        |      Error Message = "Invalid Login"          |
+        |                                               |
+     1:1|                Login request                  |0:1
+        |----------------------------------------------&gt;|
+        |      (Ox0004,Ox00,OxAA,Port,Ox50 61 75 6c)    |
+        |                                               |
+        |   "Paul tries to login into the server with   |
+        |    the Login = "Paul"                         |
+        |                                               |
+     1:1|                   ACK                         |1:2
+        |&lt;----------------------------------------------|
+        |         (Ox0002,Ox00,OxFF,OxAA,Ox01)          |
+        |              "Login sucessful"                |
+        
+    </artwork></figure></t>
+    </section>
     
     </section><!--End of examples-->
 
