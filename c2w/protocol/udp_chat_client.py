@@ -76,6 +76,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         The client proxy calls this function when the user clicks on
         the login button.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGIN packet to the server
+        # - Re-emit it if the timer ran out
         moduleLogger.debug('loginRequest called with username=%s', userName)
 
     def sendChatMessageOIE(self, message):
@@ -93,6 +97,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
            message is handled properly, i.e., it is shown only by the
            client(s) who are in the same room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_NEW_MESSAGE packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def sendJoinRoomRequestOIE(self, roomName):
@@ -108,6 +116,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             c2w.main.constants.ROOM_IDS.MAIN_ROOM when the user
             wants to go back to the main room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_SWITCH_ROOM with the roomName field packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def sendLeaveSystemRequestOIE(self):
@@ -115,6 +127,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def datagramReceived(self, datagram, host_port):
@@ -125,4 +141,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called **by Twisted** when the client has received a UDP
         packet.
         """
+        #This function should :
+        # - Unpack the datagram
+        # - Read the  SEQ_NUMBER and MESSAGE_TYPE fields in the header
+        # - If the SEQ_NUMBER is the one that is awaited, proceed, if not stop right there
+        # - Disarm the timer that was armed with the last sendRequest
+        # - Select the correct following function to read the unpacked datagram based on MESSAGE_TYPE field
         pass
