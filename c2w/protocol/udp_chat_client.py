@@ -77,6 +77,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         the login button.
         """
         moduleLogger.debug('loginRequest called with username=%s', userName)
+        
+        
 
     def sendChatMessageOIE(self, message):
         """
