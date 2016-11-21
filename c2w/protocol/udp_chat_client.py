@@ -2,6 +2,8 @@
 from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
 import logging
+import struct
+import math
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
@@ -76,6 +78,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         The client proxy calls this function when the user clicks on
         the login button.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGIN packet to the server
+        # - Re-emit it if the timer ran out
         moduleLogger.debug('loginRequest called with username=%s', userName)
         
         
@@ -95,6 +101,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
            message is handled properly, i.e., it is shown only by the
            client(s) who are in the same room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_NEW_MESSAGE packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def sendJoinRoomRequestOIE(self, roomName):
@@ -110,6 +120,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             c2w.main.constants.ROOM_IDS.MAIN_ROOM when the user
             wants to go back to the main room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_SWITCH_ROOM with the roomName field packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def sendLeaveSystemRequestOIE(self):
@@ -117,6 +131,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
         """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
         pass
 
     def datagramReceived(self, datagram, host_port):
@@ -127,4 +145,87 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called **by Twisted** when the client has received a UDP
         packet.
         """
-        pass
+        #This function should :
+        # - Unpack the datagram
+        # - Read the  SEQ_NUMBER and MESSAGE_TYPE fields in the header
+        # - If the SEQ_NUMBER is the one that is awaited, proceed, if not stop right there
+        # - Disarm the timer that was armed with the last sendRequest
+        # - Select the correct following function to read the unpacked datagram based on MESSAGE_TYPE field
+        fieldsList = udp_chat_client.decode(datagram)
+        
+    def decode(self, datagram):
+        """
+        :param byte: the payload of the UDP packet to decode
+        
+        Called by datagramReceived.
+        """
+        #This function should :
+        # - Unpack the datagram
+        
+        messageHeader = struct.unpack('!BHBH', datagram[:6])
+        fieldsList = messageHeader
+        if messageHeader[0] == 0 :
+            UL = struct.unpack('!B', datagram[6:8])
+            Username = struct.unpack('!' + str(UL) + 's', datagram[8:])
+            fieldsList += [UL, Username]
+        elif messageHeader[0] == 1 :
+            messageBody = struct.unpack('!BBBH', datagram[6:])
+            fieldsList += messageBody[:2]
+            lastEventID = messageBody[2]*math.pow(2,16) + messageBody[3]
+            fieldsList += lastEventID
+        elif messageHeader[0] == 2 :
+            fieldsList += []
+        elif messageHeader[0] == 3 :
+            messageBody = struct.unpack('!B', datagram[6:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 4 :
+            messageBody = struct.unpack('!BHB', datagram[6:])
+            lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+            fieldsList += [lastEventID,messageBody[2]]
+        elif messageHeader[0] == 5 :
+            messageBody = struct.unpack('!BH', datagram[6:])
+            lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+            fieldsList += lastEventID
+        elif messageHeader[0] == 6 :
+            messageBody = struct.unpack('!BHBB', datagram[6:])
+            lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+            fieldsList += [lastEventID] + messageBody[2:]
+        elif messageHeader[0] == 7 :
+            nbrEvents = struct.unpack('!B', datagram[6:8])
+            fieldsList += udp_chat_client.decodeList(nbreEvents, datagram[8:])
+        elif messageHeader[0] == 8 :
+            messageBody = struct.unpack('!BB', datagram[6:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 9 :
+            nbrRooms = struct.unpack('!B', datagram[6:8])
+            fieldsList += udp_chat_client.decodeList(nbreRooms, datagram[8:])
+        elif messageHeader[0] == 10 :
+            messageBody = struct.unpack('!BBB', datagram[6:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 11 :
+            nbrUsers = struct.unpack('!B', datagram[6:8])
+            fieldsList += udp_chat_client.decodeList(nbreUsers, datagram[8:])
+        elif messageHeader[0] == 12 :
+            messageBody = struct.unpack('!B', datagram[6:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 13 :
+            messageBody = struct.unpack('!B', datagram[6:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 14 :
+            messageBody = struct.unpack('!BH', datagram[6:10])
+            messageBody += struct.unpack('!'+str(messageBody[1])+'s', datagram[10:])
+            fieldsList += messageBody
+        elif messageHeader[0] == 15 :
+            messageBody = struct.unpack('!B', datagram[6:])
+            fieldsList += messageBody
+        return fieldsList
+        
+    def decodeList(self, entryNumber, datagram):
+        """
+        :param byte: the list part of the datagram to decode
+        
+        Called by decode to take care of the list part of certain packet types
+        """
+        #This function should :
+        # - Unpack a datagram formed as a list of smaller datagram
+        return []
