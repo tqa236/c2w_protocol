@@ -22,11 +22,7 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
     message_type = 0x0B;
     nbr_users = len(users_list);
 
-    code = '!BHBH' + 'BH';
-
     list_length = 0;
-
-
 
     for user in users_list:
         user_length = len(user.username);
