@@ -59,6 +59,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         #: to interact with the Graphical User Interface.
         self.clientProxy = clientProxy
         self.lossPr = lossPr
+        self.seq_number = 0
+        self.userID = 0
+        self.lastEventID = 0
 
     def startProtocol(self):
         """
@@ -83,6 +86,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Send a correctly formed PUT_LOGIN packet to the server
         # - Re-emit it if the timer ran out
         moduleLogger.debug('loginRequest called with username=%s', userName)
+        packet = PUT_LOGIN(self.seq_number,userName)
+        self.transport.write(packet, (self.serverAdress, self.serverPort))
         
         
 
@@ -152,6 +157,19 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Disarm the timer that was armed with the last sendRequest
         # - Select the correct following function to read the unpacked datagram based on MESSAGE_TYPE field
         fieldsList = unpacking.decode(datagram)
+        if fieldsList[0][1] == self.seq_number : #Le message reçu est celui-attendu
+            if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN
+                if fieldsList[1][0] == 0 : #Status code = success
+                    self.userID = fieldsList[1][1]
+                    self.lastEventID = fieldsList[1][2]
+                    self.seq.number +=1
+                elif fieldsList[1][0] == 2 :
+                    self.clientProxy.connectionRejectedONE('Too many users')
+                elif fieldsList[1][0] == 4 :
+                    self.clientProxy.connectionRejectedONE('Username not available')
+                
+            
+        
         
     
                 

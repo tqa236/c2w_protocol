@@ -13,7 +13,7 @@ def RESPONSE_LOGIN(seq_number,user_id,username,user_list,last_event_ID1,last_eve
         status_code = 2
     else:
         for i in user_list:
-            if username == i.username:
+            if username == i[1]:
                 status_code = 4
                 break
         
