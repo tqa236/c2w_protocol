@@ -5,7 +5,7 @@ import time
 
 def RESPONSE_LOGIN(seq_number,user_id,username,user_list,last_event_ID1,last_event_ID2):
     
-    message_type = 1;
+    message_type = 1
     message_length = 5
     status_code = 0
     
@@ -18,5 +18,5 @@ def RESPONSE_LOGIN(seq_number,user_id,username,user_list,last_event_ID1,last_eve
                 break
         
     code = '!BHBH' + 'BBBH'
-    data = struct.pack(code,message_type,seq_number,0,message_length,status_code,user_id,last_event_ID1,last_event_ID2);
+    data = struct.pack(code,message_type,seq_number,0,message_length,status_code,user_id,last_event_ID1,last_event_ID2)
     return data
