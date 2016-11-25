@@ -3,9 +3,12 @@ from twisted.internet.protocol import DatagramProtocol
 import struct
 import time 
 
-def PUT_LOGIN(userName):
-    l = str(len(userName))
-    code = '1s' + str(len(userName)) + 's'
-    data = struct.pack(code,l.encode('utf-8'),userName.encode('utf-8'))
-    print(data)
+def PUT_LOGIN(seq_number,username):
+
+    message_type = 0;
+    user_id = 0;
+    message_length = 1 + len(username)
+    UL = len(username)
+    code = '!BHBH' + 'B' + str(message_length) + 's'
+    data = struct.pack(code,message_type,seq_number,user_id,message_length,UL,username.encode('utf-8'));
     return data
