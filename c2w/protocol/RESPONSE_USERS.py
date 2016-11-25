@@ -24,13 +24,17 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
 
     code = '!BHBH' + 'BH';
 
-    list_length = 0
+    list_length = 0;
+
+
+
     for user in users_list:
         user_length = len(user.username);
-        list_length = list_length + 2 + user_length;
+        list_length = list_length + 3 + user_length;
+
     
-    message_length = list_length + 1;    
-    data = bytearray(6+list_length);
+    message_length = list_length + 1;   
+    data = bytearray(6+message_length);
     
     code = '!BHBH' + 'B';
     offset = 0;
@@ -44,22 +48,23 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
         user_length = len(users_list[i].username);
         
         if i == 0:
-            offset = 7;
+            offset = 7; 
         else:
-            offset = offset + len(users_list[i-1].username);
+            offset = offset + 3 + len(users_list[i-1].username);
         
-        code = 'HH'+ str(user_length) + 's' + 'H';
+        code = 'BB'+ str(user_length) + 's' + 'B';
         struct.pack_into(code,data,offset,user_id,user_length,username.encode('utf-8'),room_id);
 
     return data;
 
 
-client1 = User(0,'R',0);
-client2 = User(1,'Guinther',7);
-client3 = User(2,'Rodrigo',0);
-client4 = User(3,'Guinther',3);
 
-lista = [client1];
+client1 = User(0,'Guinther',0);
+client2 = User(1,'Louis',7);
+client3 = User(2,'Remy',0);
+client4 = User(3,'Anq',3);
+
+lista = [client1,client2,client3,client4];
 
 A = RESPONSE_USERS(7,15,lista);
 print(A);

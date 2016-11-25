@@ -1,6 +1,6 @@
 import struct 
 
-def PUT_NEW_MESSAGE(seq_number,user_id,room_id,message):
+def RESPONSE_NEW_MESSAGE(seq_number,user_id,status_code):
 
 # Function to struct the PUT_NEW_MESSAGE packet
 # MESSAGE_TYPE (1 byte 'B') = 14 (0x0E)
@@ -11,13 +11,15 @@ def PUT_NEW_MESSAGE(seq_number,user_id,room_id,message):
 # MESSAGE2_LENGTH (2 byte 'H') = size of MESSAGE
 # MESSAGE (MESSAGE2_LENGTH bytes 's')
     
-    message_type = 14;
-    message2_length = len(message);
-    message1_length = 3 + message2_length;
+    message_type = 0x0F;
+    message1_length = 1;
 
 
-    code = '!BHBH' + 'BH' + str(message2_length) + 's'
+    code = '!BHBH' + 'B;
 
-    data = struct.pack(code,message_type,seq_number,user_id,message1_length,room_id,message2_length,message.encode('utf-8'));
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,status_code);
 
     return data;
+
+A = RESPONSE_NEW_MESSAGE(1,2,3);
+print(A);
