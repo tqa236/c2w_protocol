@@ -48,14 +48,14 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
         else:
             offset = offset + 3 + len(users_list[i-1].username);
         
-        code = 'BB'+ str(user_length) + 's' + 'B';
+        code = '!BB'+ str(user_length) + 's' + 'B';
         struct.pack_into(code,data,offset,user_id,user_length,username.encode('utf-8'),room_id);
 
     return data;
 
 
 
-client1 = User(0,'Guinther',0);
+client1 = User(232,'Guinther',0);
 client2 = User(1,'Louis',7);
 client3 = User(2,'Remy',0);
 client4 = User(3,'Anq',3);

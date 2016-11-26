@@ -17,3 +17,5 @@ class Room():
 room1 = Room(13,'177.22.22.1',8888,'Animaux Fantastique',30);
 
 print(room1.getListIP());
+
+print(str(hex(8888)))
