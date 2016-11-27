@@ -9,8 +9,8 @@ moduleLogger = logging.getLogger('c2w.main.movie')
 class c2wMovie(object):
 
     def __init__(self, movieTitle, movieIpAddress, moviePort,
-                 movieFilePath=None, movieId=None, playVideo=True,
-                 moviePipeline=None, ):
+                 movieFilePath=None, movieId, playVideo=True,
+                 moviePipeline=None, nbr_users):
         """
         :param string movieTitle: The movieTitle of the movie (must be unique).
         :param moviePort: The moviePort used for the corresponding video flow.
@@ -76,6 +76,7 @@ class c2wMovie(object):
         self.moviePipeline = moviePipeline
         self.movieDescription = ''
         self.playVideo = playVideo
+        self.nbr_users = nbr_users
 
 
 
@@ -114,8 +115,8 @@ class c2wMovieStore(object):
             self._movieDic[movie.movieTitle] = movie
 
     def createAndAddMovie(self, movieTitle, movieIpAddress, moviePort,
-                          movieFilePath=None, movieId=None, noVideo=False,
-                          pipeline=None):
+                          movieFilePath=None, movieId, noVideo=False,
+                          pipeline=None,nbr_users):
         """ Create a new movie and add it to the dictionary """
         if movieTitle in list(self._movieDic.keys()):
             moduleLogger.error("MOVIE_STORE_ERROR (addMovie): the movie" +
@@ -123,7 +124,7 @@ class c2wMovieStore(object):
             raise ValueError("movie already in the dictionary")
         else:
             movie = c2wMovie(movieTitle, movieIpAddress, moviePort,
-                             movieFilePath, movieId, noVideo, pipeline)
+                             movieFilePath, movieId, noVideo, pipeline,nbr_users)
             moduleLogger.debug("MOVIE_STORE (addMovie): " +
                 " title=%s, IP=%s, port=%s", movie.movieTitle,
                 movie.movieIpAddress, movie.moviePort)

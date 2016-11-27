@@ -139,7 +139,7 @@ class c2wClientModel(object):
         self._userStore.updateUserChatRoom(userName, newUserChatRoom)
 
 
-    def addMovie(self, movieTitle, movieIpAddress, moviePort, movieId=None):
+    def addMovie(self, movieTitle, movieIpAddress, moviePort, movieId, nbr_users):
         """
         :param movieTitle: The title of the movie.
         :type movieTitel: string
@@ -155,7 +155,7 @@ class c2wClientModel(object):
         """
 
         self._movieStore.createAndAddMovie(movieTitle, movieIpAddress,
-                                           moviePort, None, movieId)
+                                           moviePort, None, movieId, False, None, nbr_users)
 
 
     def getMovieById(self, movieId):

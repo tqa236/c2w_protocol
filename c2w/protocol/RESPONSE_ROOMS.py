@@ -67,9 +67,3 @@ def RESPONSE_ROOMS(seq_number,user_id,rooms_list):
 
     return data;
 
-room1 = Room(5,'178.255.0.64',8888,'Animaux Fantastique',30);
-
-lista = [room1,room1,room1,room1,room1,room1];
-
-A = RESPONSE_ROOMS(2124,232,lista);
-print(A);

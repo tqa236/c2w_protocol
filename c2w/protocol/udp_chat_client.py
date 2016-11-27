@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-*
 from twisted.internet.protocol import DatagramProtocol
-from c2w.main.lossy_transport import LossyTransport
+#from c2w.main.lossy_transport import LossyTransport
 import logging
-import unpacking
-from . import PUT_LOGIN
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
+
+import unpacking
+from PUT_LOGIN import PUT_LOGIN
+from resent_login import resent_login
 from twisted.internet import reactor
+from c2w.main.client_model.py import c2wClientModel
 
 
 
@@ -63,6 +66,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.seq_number = 0
         self.userID = 0
         self.lastEventID = 0
+        self.successful_login = 0;
+        self.store = c2wClientModel();
 
     def startProtocol(self):
         """
@@ -73,7 +78,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         command line option is used.
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
-        DatagramProtocol.transport = self.transport
+        DatagramProtocol.transport = self.transport;
 
     def sendLoginRequestOIE(self, userName):
         """
@@ -89,6 +94,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('loginRequest called with username=%s', userName)
         packet = PUT_LOGIN.PUT_LOGIN(self.seq_number,userName)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
+
+        reactor.callLater(delay, resent_login, self.seq_number,userName,successful_login,self.transport,packet,self.serverAddress,self.serverPort,delay);
         
         
 
@@ -144,6 +151,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         pass
 
     def datagramReceived(self, datagram, host_port):
+
+
         """
         :param string datagram: the payload of the UDP packet.
         :param host_port: a touple containing the source IP address and port.
@@ -151,19 +160,23 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called **by Twisted** when the client has received a UDP
         packet.
         """
+
         #This function should :
         # - Unpack the datagram
         # - Read the  SEQ_NUMBER and MESSAGE_TYPE fields in the header
         # - If the SEQ_NUMBER is the one that is awaited, proceed, if not stop right there
         # - Disarm the timer that was armed with the last sendRequest
         # - Select the correct following function to read the unpacked datagram based on MESSAGE_TYPE field
+
+
         fieldsList = unpacking.decode(datagram)
         if fieldsList[0][1] == self.seq_number : #Le message reçu est celui-attendu
             if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN
                 if fieldsList[1][0] == 0 : #Status code = success
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
-                    self.seq.number +=1
+                    self.seq_number +=1
+                    self.successful_login = 1;
                 elif fieldsList[1][0] == 1 :
                     self.clientProxy.connectionRejectedONE('Unknow error');
                 elif fieldsList[1][0] == 2 :
@@ -175,12 +188,35 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 else :
                     self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');                    
                 
-            if fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
+            elif fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
                     self.userID = 0;
                     self.lastEventID = 0;
                     self.seq.number = 0;
-            
-                
+                    self.successful_login = 0;
+                    self.store.removeAllMovies();
+                    self.store.removeAllUsers();
+                    
+            elif fieldsList[0][0] == 5 : #Le message reçu est de type RESPONSE_PING
+
+                    
+            elif fieldsList[0][0] == 7 : #Le message reçu est de type RESPONSE_EVENTS
+
+
+            elif fieldsList[0][0] == 9 : #Le message reçu est de type RESPONSE_ROOMS
+                for i in range(len(fieldsList)):
+                    if store.getMovieById(fieldsList[1+i][3]) == None:   
+                        store.addMovie(fieldsList[1+i][3],fieldsList[1+i][1], fieldsList[1+i][2], fieldsList[1+i][0],fieldsList[1+i][4]);
+            #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users                
+
+
+            elif fieldsList[0][0] == 11 : #Le message reçu est de type RESPONSE_USERS
+
+
+            elif fieldsList[0][0] == 13 : #Le message reçu est de type RESPONSE_SWITCH_ROOM
+
+
+            elif fieldsList[0][0] == 15 : #Le message reçu est de type RESPONSE_NEW_MESSAGE
+              
             
         
         
