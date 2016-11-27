@@ -48,6 +48,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         self.lossPr = lossPr
         self.clientList = []
         self.seq_numberList = []
+        self.last_event_ID = 0
+        #self.main_room = self.serverProxy
 
     def startProtocol(self):
         """
@@ -73,7 +75,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         if fieldsList[0][0] == 0 : #Le message reçu est de type PUT_LOGIN, user_id = 0 par definition car le client attends que l'on lui en attribue une
             new_username = fieldsList[1][0]
             self.seq_numberList.append(fieldsList[0][1])
-            user_id = self.serverProxy.addUser(new_username,new c2w.main.constants.ROOM_IDS.MAIN_ROOM(), host_port)
+            #main_room = new c2w.main.constants.ROOM_IDS.MAIN_ROOM()
+            user_id = self.serverProxy.addUser(new_username,new_room)
             packet = RESPONSE_LOGIN(fieldsList[0][1],user_id,new_username,self.clientList,0,0)
             self.clientList.append((user_id, new_username))
             self.transport.write(packet, host_port)

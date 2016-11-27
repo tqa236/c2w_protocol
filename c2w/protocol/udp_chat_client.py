@@ -2,9 +2,7 @@
 from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
 import logging
-import unpacking
-
-
+from . import PUT_LOGIN
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
 
@@ -86,8 +84,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Send a correctly formed PUT_LOGIN packet to the server
         # - Re-emit it if the timer ran out
         moduleLogger.debug('loginRequest called with username=%s', userName)
-        packet = PUT_LOGIN(self.seq_number,userName)
-        self.transport.write(packet, (self.serverAdress, self.serverPort))
+        packet = PUT_LOGIN.PUT_LOGIN(self.seq_number,userName)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         
 
