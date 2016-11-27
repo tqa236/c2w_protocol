@@ -2,9 +2,12 @@
 from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
 import logging
+import unpacking
 from . import PUT_LOGIN
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
+from twisted.internet import reactor
+
 
 
 class c2wUdpChatClientProtocol(DatagramProtocol):
@@ -161,10 +164,22 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
                     self.seq.number +=1
+                elif fieldsList[1][0] == 1 :
+                    self.clientProxy.connectionRejectedONE('Unknow error');
                 elif fieldsList[1][0] == 2 :
-                    self.clientProxy.connectionRejectedONE('Too many users')
+                    self.clientProxy.connectionRejectedONE('Too many users');
+                elif fieldsList[1][0] == 3 :
+                    self.clientProxy.connectionRejectedONE('Invalid username');
                 elif fieldsList[1][0] == 4 :
-                    self.clientProxy.connectionRejectedONE('Username not available')
+                    self.clientProxy.connectionRejectedONE('Username not available');
+                else :
+                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');                    
+                
+            if fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
+                    self.userID = 0;
+                    self.lastEventID = 0;
+                    self.seq.number = 0;
+            
                 
             
         
