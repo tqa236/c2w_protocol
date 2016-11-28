@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-*
 from twisted.internet.protocol import DatagramProtocol
-#from c2w.main.lossy_transport import LossyTransport
+from c2w.main.lossy_transport import LossyTransport
 import logging
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
-
-import unpacking
-from PUT_LOGIN import PUT_LOGIN
-from resent_login import resent_login
+import time
+from . import unpacking
+#from PUT_LOGIN import PUT_LOGIN
+from . import PUT_LOGIN
+#from . import resent_login
 from twisted.internet import reactor
-from c2w.main.client_model.py import c2wClientModel
-
+from c2w.main.client_model import c2wClientModel
 
 
 class c2wUdpChatClientProtocol(DatagramProtocol):
@@ -19,7 +19,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         :param serverAddress: The IP address (or the name) of the c2w server,
             given by the user.
-        :param serverPort: The port number used by the c2w server,
             given by the user.
         :param clientProxy: The clientProxy, which the protocol must use
             to interact with the Graphical User Interface.
@@ -68,6 +67,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.lastEventID = 0
         self.successful_login = 0;
         self.store = c2wClientModel();
+        self.delay = 1; #1s
 
     def startProtocol(self):
         """
@@ -94,10 +94,19 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('loginRequest called with username=%s', userName)
         packet = PUT_LOGIN.PUT_LOGIN(self.seq_number,userName)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
+              
+        #reactor.callLater(self.delay, self.resent_login,packet);
+    
 
-        reactor.callLater(delay, resent_login, self.seq_number,userName,successful_login,self.transport,packet,self.serverAddress,self.serverPort,delay);
+
+    def resent_login(packet):
+
+        if successful_login == 0: # packet lost
+            transport.write(packet,(self.serverAddress,self.serverPort))
+            #reactor.callLater(self.delay, self.resent_login, packet)
+            print(1)
         
-        
+
 
     def sendChatMessageOIE(self, message):
         """
@@ -171,12 +180,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
         fieldsList = unpacking.decode(datagram)
         if fieldsList[0][1] == self.seq_number : #Le message reçu est celui-attendu
-            if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN
+            if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN            
+                self.successful_login = 1;            
                 if fieldsList[1][0] == 0 : #Status code = success
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
                     self.seq_number +=1
-                    self.successful_login = 1;
                 elif fieldsList[1][0] == 1 :
                     self.clientProxy.connectionRejectedONE('Unknow error');
                 elif fieldsList[1][0] == 2 :
@@ -187,20 +196,20 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                     self.clientProxy.connectionRejectedONE('Username not available');
                 else :
                     self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');                    
-                
+"""               
             elif fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
-                    self.userID = 0;
-                    self.lastEventID = 0;
-                    self.seq.number = 0;
-                    self.successful_login = 0;
-                    self.store.removeAllMovies();
-                    self.store.removeAllUsers();
+                self.userID = 0;
+                self.lastEventID = 0;
+                self.seq.number = 0;
+                self.successful_login = 0;
+                self.store.removeAllMovies();
+                self.store.removeAllUsers();
                     
             elif fieldsList[0][0] == 5 : #Le message reçu est de type RESPONSE_PING
-
+                pass
                     
             elif fieldsList[0][0] == 7 : #Le message reçu est de type RESPONSE_EVENTS
-
+                pass
 
             elif fieldsList[0][0] == 9 : #Le message reçu est de type RESPONSE_ROOMS
                 for i in range(len(fieldsList)):
@@ -210,19 +219,19 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
 
             elif fieldsList[0][0] == 11 : #Le message reçu est de type RESPONSE_USERS
-
+                pass
 
             elif fieldsList[0][0] == 13 : #Le message reçu est de type RESPONSE_SWITCH_ROOM
-
+                pass
 
             elif fieldsList[0][0] == 15 : #Le message reçu est de type RESPONSE_NEW_MESSAGE
-              
+                pass
             
-        
+     
         
     
                 
-                
+"""             
                 
                 
                 

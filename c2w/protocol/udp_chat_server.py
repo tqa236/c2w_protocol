@@ -2,8 +2,9 @@
 from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
 import logging
-import unpacking
-import c2w.main.constants.ROOM_IDS
+from . import unpacking
+from . import RESPONSE_LOGIN
+#import c2w.main.constants.ROOM_IDS
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
@@ -75,8 +76,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         if fieldsList[0][0] == 0 : #Le message reçu est de type PUT_LOGIN, user_id = 0 par definition car le client attends que l'on lui en attribue une
             new_username = fieldsList[1][0]
             self.seq_numberList.append(fieldsList[0][1])
-            #main_room = new c2w.main.constants.ROOM_IDS.MAIN_ROOM()
-            user_id = self.serverProxy.addUser(new_username,new_room)
-            packet = RESPONSE_LOGIN(fieldsList[0][1],user_id,new_username,self.clientList,0,0)
+            #main_room = c2w.main.constants.ROOM_IDS.MAIN_ROOM()
+            user_id = self.serverProxy.addUser(new_username,'main_room')
+            packet = RESPONSE_LOGIN.RESPONSE_LOGIN(fieldsList[0][1],user_id,new_username,self.clientList,0,0)
             self.clientList.append((user_id, new_username))
             self.transport.write(packet, host_port)

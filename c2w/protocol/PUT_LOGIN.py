@@ -12,3 +12,5 @@ def PUT_LOGIN(seq_number,username):
     code = '!BHBH' + 'B' + str(UL) + 's'
     data = struct.pack(code,message_type,seq_number,user_id,message_length,UL,username.encode('utf-8'))
     return data
+
+

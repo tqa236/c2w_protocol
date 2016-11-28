@@ -14,12 +14,11 @@ def decode(datagram):
     messageHeader = struct.unpack('!BHBH', datagram[:6]) #Contains : messageType, seq_number, user_id, message_length
     fieldsList.append(messageHeader)
     if messageHeader[0] == 0 : #Login request dataType
-        UL = struct.unpack('!B', datagram[6:7])
-        Username = struct.unpack('!' + str(UL) + 's', datagram[7:])
-        fieldsList.append(Username)
+        UL = struct.unpack('B', datagram[6:7])
+        Username = struct.unpack('!' + str(UL[0]) + 's', datagram[7:])
+        fieldsList.append(Username[0].decode('utf-8'))
     elif messageHeader[0] == 1 : #Login response dataType
         messageBody = struct.unpack('!BBBH', datagram[6:]) #Struct does not have a 3 byte type, so we use a '!BH' type instead
-        fieldsList += messageBody[:2]
         lastEventID = messageBody[2]*math.pow(2,16) + messageBody[3] #For the BH type to be converted into a 3 byte value we need to multiply the single byte type (B) by 2^16
         fieldsList.append([messageBody[0], messageBody[1], lastEventID])
     elif messageHeader[0] == 2 : #Logout request dataType
