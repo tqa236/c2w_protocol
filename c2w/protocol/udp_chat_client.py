@@ -67,7 +67,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.lastEventID = 0
         self.successful_login = 0;
         self.store = c2wClientModel();
-        self.delay = 1; #1s
+        self.delay = 0.5; #1s
 
     def startProtocol(self):
         """
@@ -91,20 +91,21 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Arm a timer
         # - Send a correctly formed PUT_LOGIN packet to the server
         # - Re-emit it if the timer ran out
+        
+                
         moduleLogger.debug('loginRequest called with username=%s', userName)
         packet = PUT_LOGIN.PUT_LOGIN(self.seq_number,userName)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-              
-        #reactor.callLater(self.delay, self.resent_login,packet);
+        
+        self.successful_login = 1;      
+        reactor.callLater(self.delay, self.resent_login, userName);
     
 
+    def resent_login(self,userName):
 
-    def resent_login(packet):
-
-        if successful_login == 0: # packet lost
-            transport.write(packet,(self.serverAddress,self.serverPort))
-            #reactor.callLater(self.delay, self.resent_login, packet)
-            print(1)
+        if self.successful_login == 1: # packet lost
+            self.sendLoginRequestOIE(userName)
+        pass
         
 
 
@@ -161,7 +162,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
     def datagramReceived(self, datagram, host_port):
 
-
         """
         :param string datagram: the payload of the UDP packet.
         :param host_port: a touple containing the source IP address and port.
@@ -181,7 +181,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         fieldsList = unpacking.decode(datagram)
         if fieldsList[0][1] == self.seq_number : #Le message reçu est celui-attendu
             if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN            
-                self.successful_login = 1;            
+                self.successful_login = 0;            
                 if fieldsList[1][0] == 0 : #Status code = success
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]

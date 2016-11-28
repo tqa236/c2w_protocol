@@ -17,6 +17,7 @@ def decode(datagram):
         UL = struct.unpack('B', datagram[6:7])
         Username = struct.unpack('!' + str(UL[0]) + 's', datagram[7:])
         fieldsList.append(Username[0].decode('utf-8'))
+        
     elif messageHeader[0] == 1 : #Login response dataType
         messageBody = struct.unpack('!BBBH', datagram[6:]) #Struct does not have a 3 byte type, so we use a '!BH' type instead
         lastEventID = messageBody[2]*math.pow(2,16) + messageBody[3] #For the BH type to be converted into a 3 byte value we need to multiply the single byte type (B) by 2^16
