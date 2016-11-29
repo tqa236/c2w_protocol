@@ -4,11 +4,13 @@ from c2w.main.lossy_transport import LossyTransport
 import logging
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
+
 import time
+
 from . import unpacking
-#from PUT_LOGIN import PUT_LOGIN
-from . import PUT_LOGIN
-#from . import resent_login
+from . import packing
+#from . import PUT_LOGIN
+
 from twisted.internet import reactor
 from c2w.main.client_model import c2wClientModel
 
@@ -62,10 +64,17 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         #: to interact with the Graphical User Interface.
         self.clientProxy = clientProxy
         self.lossPr = lossPr
+        
         self.seq_number = 0
         self.userID = 0
         self.lastEventID = 0
+        self.userRoomID = 0;
+        
         self.successful_login = 0;
+        self.successful_message = 0;
+        self.successful_switch_room = 0;
+        self.successful_logout = 0;
+        
         self.store = c2wClientModel();
         self.delay = 0.5; #1s
 
@@ -79,7 +88,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport;
-
+        
+###########     
+   
     def sendLoginRequestOIE(self, userName):
         """
         :param string userName: The user name that the user has typed.
@@ -91,24 +102,32 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Arm a timer
         # - Send a correctly formed PUT_LOGIN packet to the server
         # - Re-emit it if the timer ran out
-        
-                
+               
         moduleLogger.debug('loginRequest called with username=%s', userName)
-        packet = PUT_LOGIN.PUT_LOGIN(self.seq_number,userName)      
+        packet = packing.PUT_LOGIN(self.seq_number,userName)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.successful_login = 1;      
-        reactor.callLater(self.delay, self.resent_login, userName);
-    
-
-    def resent_login(self,userName):
-
-        if self.successful_login == 1: # packet lost
-            self.sendLoginRequestOIE(userName)
-        pass
+        reactor.callLater(self.delay, self.resent_packet, userName);
         
+###########     
+   
+    def resent_packet(self,data):
 
-
+        if self.successful_login == 1: # login's packet lost
+            self.sendLoginRequestOIE(data)
+            
+        if self.successful_message == 1: # message's packet lost
+            self.sendChatMessageOIE(data)
+             
+        if self.successful_switch_room == 1: # switch_room's packet lost
+            self.sendJoinRoomRequestOIE(data)
+            
+        if self.successful_out == 1: # logout's packet lost
+            self.sendLeaveSystemRequestOIE()
+                   
+###########     
+   
     def sendChatMessageOIE(self, message):
         """
         :param message: The text of the chat message.
@@ -128,8 +147,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Arm a timer
         # - Send a correctly formed PUT_NEW_MESSAGE packet to the server
         # - Re-emit it if the timer ran out
-        pass
+        
+        moduleLogger.debug('Message request called with content=%s', message)
+        packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_message = 1;      
+        reactor.callLater(self.delay, self.resent_packet, message);
 
+###########     
+   
     def sendJoinRoomRequestOIE(self, roomName):
         """
         :param roomName: The room name (or movie title.)
@@ -147,8 +174,18 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Arm a timer
         # - Send a correctly formed PUT_SWITCH_ROOM with the roomName field packet to the server
         # - Re-emit it if the timer ran out
-        pass
+        
+        moduleLogger.debug('Join Room request called with room name = %s', roomName)
+        
+        RoomID = store.getMovieByTitle(roomName).movieId; # Je ne suis pas sûr si movieId est dejà une integer, il faut conférer ça.
+        packet = packing.PUT_SWITCH_ROOM = (self.seq_number,self.userID,RoomID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_switch_room = 1;      
+        reactor.callLater(self.delay, self.resent_packet, RoomID);
 
+###########     
+   
     def sendLeaveSystemRequestOIE(self):
         """
         Called by the client proxy  when the user
@@ -158,8 +195,17 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Arm a timer
         # - Send a correctly formed PUT_LOGOUT packet to the server
         # - Re-emit it if the timer ran out
-        pass
+        
+        moduleLogger.debug('Leave system request called')
+        
+        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_logout = 1;      
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
 
+###########     
+   
     def datagramReceived(self, datagram, host_port):
 
         """
