@@ -242,10 +242,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         moduleLogger.debug('Get events request called')
         
-        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        packet = packing.GET_EVENTS = (self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_logout = 1; # Il faut modifier ça dans datagram     
+        self.successful_events = 1; # Il faut modifier ça dans datagram     
         reactor.callLater(self.delay, self.resent_packet, self.seq_number);
 
 ########### GET_ROOMS     

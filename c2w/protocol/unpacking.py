@@ -50,7 +50,7 @@ def decode(datagram):
     #GET_EVENTS
     elif messageHeader[0] == 6 : #Events data request dataType
         messageBody = struct.unpack('!BHBB', datagram[6:])
-        lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+        lastEventID = int(messageBody[0]*math.pow(2,16) + messageBody[1])
         fieldsList.append([lastEventID, messageBody[2], messageBody[3]])
     
     #RESPONSE_EVENTS

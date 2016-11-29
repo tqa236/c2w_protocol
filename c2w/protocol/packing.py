@@ -75,7 +75,20 @@ def GET_PING(seq_number,user_id,last_event_id,room_id):
      
 ###########
  
+def GET_EVENTS(seq_number,user_id,last_event_id,nbr_events,room_id):
+    
+    message_type = 0x06
+    message_length = 5
+    
+    last_event_id_temp = math.floor(last_event_id/256);
+    last_event_id0 = last_event_id - 256*last_event_id_temp;
+    last_event_id2 = math.floor(last_event_id_temp/256);
+    last_event_id1 = last_event_id_temp - 256*last_event_id2;
+    
+    code = '!BHBH' + 'BBBBB'
+    data = struct.pack(code,message_type,seq_number,user_id,message_length,last_event_id2,last_event_id1,last_event_id0,nbr_events,room_id)
 
+    return data
     
 ###########
 
