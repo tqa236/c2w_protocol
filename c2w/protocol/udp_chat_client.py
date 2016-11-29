@@ -65,9 +65,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.clientProxy = clientProxy
         self.lossPr = lossPr
         
-        self.seq_number = 0
-        self.userID = 0
-        self.lastEventID = 0
+        self.seq_number = 0;
+        self.userID = 0;
+        self.lastEventID = 0;
         self.userRoomID = 0;
         
         self.successful_login = 0;
@@ -89,7 +89,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport;
         
-###########     
+########### PUT_LOGIN  
    
     def sendLoginRequestOIE(self, userName):
         """
@@ -123,10 +123,14 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         if self.successful_switch_room == 1: # switch_room's packet lost
             self.sendJoinRoomRequestOIE(data)
             
-        if self.successful_out == 1: # logout's packet lost
+        if self.successful_logout == 1: # logout's packet lost
             self.sendLeaveSystemRequestOIE()
+            
+        if self.successful_ping == 1: # ping's packet lost
+            self.sendGetPingRequestOIE()            
+        
                    
-###########     
+########### PUT_NEW_MESSAGE    
    
     def sendChatMessageOIE(self, message):
         """
@@ -152,10 +156,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_message = 1;      
+        self.successful_message = 1; # Il faut modifier ça dans datagram       
         reactor.callLater(self.delay, self.resent_packet, message);
 
-###########     
+########### PUT_SWITCH_ROOM     
    
     def sendJoinRoomRequestOIE(self, roomName):
         """
@@ -181,10 +185,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_SWITCH_ROOM = (self.seq_number,self.userID,RoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_switch_room = 1;      
+        self.successful_switch_room = 1; # Il faut modifier ça dans datagram       
         reactor.callLater(self.delay, self.resent_packet, RoomID);
 
-###########     
+########### PUT_LOGOUT     
    
     def sendLeaveSystemRequestOIE(self):
         """
@@ -201,11 +205,91 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_logout = 1;      
+        self.successful_logout = 1; # Il faut modifier ça dans datagram     
+        reactor.callLater(self.delay, self.resent_packet, "not used");
+
+########### GET_PING     
+   
+    def sendGetPingRequestOIE(self):
+        """
+        Called by the client proxy  when the user
+        has clicked on the leave button in the main room.
+        """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
+        
+        moduleLogger.debug('Get ping request called')
+        
+        packet = packing.GET_PING = GET_PING(self.seq_number,self.user_ID,self.lastEventID,self.userRoomID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_ping = 1; # Il faut modifier ça dans datagram     
+        reactor.callLater(self.delay, self.resent_packet, "not used");
+
+########### GET_EVENTS     
+   
+    def sendGetEventsRequestOIE(self):
+        """
+        Called by the client proxy  when the user
+        has clicked on the leave button in the main room.
+        """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
+        
+        moduleLogger.debug('Get events request called')
+        
+        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_logout = 1; # Il faut modifier ça dans datagram     
         reactor.callLater(self.delay, self.resent_packet, self.seq_number);
 
-###########     
+########### GET_ROOMS     
    
+    def sendGetRoomsRequestOIE(self):
+        """
+        Called by the client proxy  when the user
+        has clicked on the leave button in the main room.
+        """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
+        
+        moduleLogger.debug('Leave system request called')
+        
+        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_logout = 1; # Il faut modifier ça dans datagram     
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+
+########### GET_USERS     
+   
+    def sendGetUsersRequestOIE(self):
+        """
+        Called by the client proxy  when the user
+        has clicked on the leave button in the main room.
+        """
+        #This function should :
+        # - Arm a timer
+        # - Send a correctly formed PUT_LOGOUT packet to the server
+        # - Re-emit it if the timer ran out
+        
+        moduleLogger.debug('Leave system request called')
+        
+        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        
+        self.successful_logout = 1; # Il faut modifier ça dans datagram     
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+
+###########      
+               
     def datagramReceived(self, datagram, host_port):
 
         """

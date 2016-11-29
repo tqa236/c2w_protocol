@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
 import struct
-import time 
+import time
+import math 
 
 ###########     
    
@@ -48,7 +49,7 @@ def PUT_SWITCH_ROOM(seq_number,user_id,room_id):
 
 def PUT_LOGOUT(seq_number,user_ID):
 
-    message_type = 2;
+    message_type = 0x02;
     
     message_length = 0
    
@@ -57,5 +58,31 @@ def PUT_LOGOUT(seq_number,user_ID):
     return data 
     
 ###########
+
+def GET_PING(seq_number,user_id,last_event_id,room_id):
+    
+    message_type = 0x04
+    message_length = 4
+    
+    last_event_id_temp = math.floor(last_event_id/256);
+    last_event_id0 = last_event_id - 256*last_event_id_temp;
+    last_event_id2 = math.floor(last_event_id_temp/256);
+    last_event_id1 = last_event_id_temp - 256*last_event_id2;
+    
+    code = '!BHBH' + 'BBBB'
+    data = struct.pack(code,message_type,seq_number,user_id,message_length,last_event_id2,last_event_id1,last_event_id0,room_id)
+    return data
+     
+###########
+ 
+
+    
+###########
+
+
+    
+###########
+   
+
    
        
