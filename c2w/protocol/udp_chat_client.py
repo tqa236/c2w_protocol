@@ -75,9 +75,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.successful_switch_room = 0;
         self.successful_logout = 0;
         
+        
         self.store = c2wClientModel();
-        self.delay = 0.5; #1s
-
+        
+        self.delay = 0.5; #500ms
+        self.nbr_rooms = 50; # numéro de rooms que le client va demander en chaque GET_ROOMS
+        self.nbr_users = 50; # numéro de users que le client va demander en chaque GET_USERS
+        
     def startProtocol(self):
         """
         DO NOT MODIFY THE FIRST TWO LINES OF THIS METHOD!!
@@ -127,8 +131,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             self.sendLeaveSystemRequestOIE()
             
         if self.successful_ping == 1: # ping's packet lost
-            self.sendGetPingRequestOIE()            
+            self.sendGetPingRequestOIE()
+            
+        if self.successful_events == 1: # events's packet lost
+            self.sendGetEventsRequestOIE(data)
+            
+        if self.successful_rooms == 1: # rooms' packet lost
+            self.sendGetRoomsRequestOIE(data)            
         
+        if self.successful_users == 1: # users' packet lost
+            self.sendGetUsersRequestOIE(data)
                    
 ########### PUT_NEW_MESSAGE    
    
@@ -156,7 +168,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_message = 1; # Il faut modifier ça dans datagram       
+        self.successful_message = 1; # Il faut modifier ça dans datagramReceived       
         reactor.callLater(self.delay, self.resent_packet, message);
 
 ########### PUT_SWITCH_ROOM     
@@ -185,7 +197,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_SWITCH_ROOM = (self.seq_number,self.userID,RoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_switch_room = 1; # Il faut modifier ça dans datagram       
+        self.successful_switch_room = 1; # Il faut modifier ça dans datagramReceived       
         reactor.callLater(self.delay, self.resent_packet, RoomID);
 
 ########### PUT_LOGOUT     
@@ -205,7 +217,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_logout = 1; # Il faut modifier ça dans datagram     
+        self.successful_logout = 1; # Il faut modifier ça dans datagramReceived    
         reactor.callLater(self.delay, self.resent_packet, "not used");
 
 ########### GET_PING     
@@ -225,12 +237,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_PING = GET_PING(self.seq_number,self.user_ID,self.lastEventID,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_ping = 1; # Il faut modifier ça dans datagram     
+        self.successful_ping = 1; # Il faut modifier ça dans datagramReceived    
         reactor.callLater(self.delay, self.resent_packet, "not used");
 
 ########### GET_EVENTS     
    
-    def sendGetEventsRequestOIE(self):
+    def sendGetEventsRequestOIE(self,nbr_events):
         """
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
@@ -242,15 +254,15 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         moduleLogger.debug('Get events request called')
         
-        packet = packing.GET_EVENTS = (self.seq_number,self.userID)      
+        packet = packing.GET_EVENTS = (self.seq_number,self.userID,nbr_events,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_events = 1; # Il faut modifier ça dans datagram     
-        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.successful_events = 1; # Il faut modifier ça dans datagramReceived    
+        reactor.callLater(self.delay, self.resent_packet, nbr_events);
 
 ########### GET_ROOMS     
    
-    def sendGetRoomsRequestOIE(self):
+    def sendGetRoomsRequestOIE(self,first_room_id):
         """
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
@@ -260,17 +272,17 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Send a correctly formed PUT_LOGOUT packet to the server
         # - Re-emit it if the timer ran out
         
-        moduleLogger.debug('Leave system request called')
+        moduleLogger.debug('Get rooms request called')
         
-        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        packet = packing.GET_ROOMS = (self.seq_number,self.userID,first_room_id,self.nbr_rooms)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_logout = 1; # Il faut modifier ça dans datagram     
-        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.successful_rooms = 1; # Il faut modifier ça dans datagramReceived     
+        reactor.callLater(self.delay, self.resent_packet, first_room_id);
 
 ########### GET_USERS     
    
-    def sendGetUsersRequestOIE(self):
+    def sendGetUsersRequestOIE(self,first_user_id):
         """
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
@@ -280,13 +292,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Send a correctly formed PUT_LOGOUT packet to the server
         # - Re-emit it if the timer ran out
         
-        moduleLogger.debug('Leave system request called')
-        
-        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        moduleLogger.debug('Get users request called')
+
+        packet = packing.GET_USERS = (self.seq_number,self.userID,first_user_id,self.nbr_users,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_logout = 1; # Il faut modifier ça dans datagram     
-        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.successful_users = 1; # Il faut modifier ça dans datagramReceived     
+        reactor.callLater(self.delay, self.resent_packet, first_user_id);
 
 ###########      
                

@@ -12,6 +12,7 @@ def PUT_LOGIN(seq_number,username):
     user_id = 0
     message_length = 1 + len(username)
     UL = len(username)
+    
     code = '!BHBH' + 'B' + str(UL) + 's'
     data = struct.pack(code,message_type,seq_number,user_id,message_length,UL,username.encode('utf-8'))
     return data
@@ -24,9 +25,7 @@ def PUT_NEW_MESSAGE(seq_number,user_id,room_id,message):
     message2_length = len(message);
     message1_length = 3 + message2_length;
 
-
     code = '!BHBH' + 'BH' + str(message2_length) + 's';
-
     data = struct.pack(code,message_type,seq_number,user_id,message1_length,room_id,message2_length,message.encode('utf-8'));
 
     return data;
@@ -38,9 +37,7 @@ def PUT_SWITCH_ROOM(seq_number,user_id,room_id):
     message_type = 0x0C;
     message1_length = 1;
 
-
     code = '!BHBH' + 'B';
-
     data = struct.pack(code,message_type,seq_number,user_id,message1_length,room_id);
 
     return data;
@@ -49,8 +46,7 @@ def PUT_SWITCH_ROOM(seq_number,user_id,room_id):
 
 def PUT_LOGOUT(seq_number,user_ID):
 
-    message_type = 0x02;
-    
+    message_type = 0x02;    
     message_length = 0
    
     code = '!BHBH' 
@@ -92,10 +88,65 @@ def GET_EVENTS(seq_number,user_id,last_event_id,nbr_events,room_id):
     
 ###########
 
+def GET_ROOMS(seq_number,user_id,first_room_id,nbr_rooms):
+    
+    message_type = 0x08;
+    message_length = 0x02;
+
+    code = '!BHBH' + 'BB';
+    data = struct.pack(code,message_type,seq_number,user_id,message_length,first_room_id,nbr_rooms);
+
+    return data;
+    
+###########
+
+def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
+    
+    message_type = 0x0A;
+    message1_length = 3;
+
+    code = '!BHBH' + 'BBB';
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,first_user_id,nbr_users,room_id);
+
+    return data;
+    
+###########
+    
+    
+###########
 
     
 ###########
-   
+    
+    
+###########  
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
+
+    
+###########
 
    
        
