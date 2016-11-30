@@ -69,18 +69,21 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.userID = 0;
         self.lastEventID = 0;
         self.userRoomID = 0;
-        
+ 
+        """       
         self.successful_login = 0;
         self.successful_message = 0;
         self.successful_switch_room = 0;
         self.successful_logout = 0;
+        """        
         
-        
+        self.packets_sent = {}        
         self.store = c2wClientModel();
         
         self.delay = 0.5; #500ms
         self.nbr_rooms = 50; # numéro de rooms que le client va demander en chaque GET_ROOMS
         self.nbr_users = 50; # numéro de users que le client va demander en chaque GET_USERS
+        
         
     def startProtocol(self):
         """
@@ -108,40 +111,25 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         # - Re-emit it if the timer ran out
                
         moduleLogger.debug('loginRequest called with username=%s', userName)
-        packet = packing.PUT_LOGIN(self.seq_number,userName)      
+        packet = packing.PUT_LOGIN(self.seq_number,userName)        
+              
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_login = 1;      
-        reactor.callLater(self.delay, self.resent_packet, userName);
-        
-###########     
-   
-    def resent_packet(self,data):
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+               
+        #self.successful_login = 1;      
+        #reactor.callLater(self.delay, self.resent_packet, userName);
 
-        if self.successful_login == 1: # login's packet lost
-            self.sendLoginRequestOIE(data)
-            
-        if self.successful_message == 1: # message's packet lost
-            self.sendChatMessageOIE(data)
-             
-        if self.successful_switch_room == 1: # switch_room's packet lost
-            self.sendJoinRoomRequestOIE(data)
-            
-        if self.successful_logout == 1: # logout's packet lost
-            self.sendLeaveSystemRequestOIE()
-            
-        if self.successful_ping == 1: # ping's packet lost
-            self.sendGetPingRequestOIE()
-            
-        if self.successful_events == 1: # events's packet lost
-            self.sendGetEventsRequestOIE(data)
-            
-        if self.successful_rooms == 1: # rooms' packet lost
-            self.sendGetRoomsRequestOIE(data)            
-        
-        if self.successful_users == 1: # users' packet lost
-            self.sendGetUsersRequestOIE(data)
-                   
+###########
+
+    def resent_packet(self, seq_number):
+    
+        if seq_number in self.packets_sent: # response's packet lost
+            self.transport.write(self.packets_sent[seq_number], (self.serverAddress, self.serverPort))
+            reactor.callLater(self.delay, self.resent_packet, seq_number)   
+                     
 ########### PUT_NEW_MESSAGE    
    
     def sendChatMessageOIE(self, message):
@@ -168,8 +156,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_message = 1; # Il faut modifier ça dans datagramReceived       
-        reactor.callLater(self.delay, self.resent_packet, message);
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+        
+        #self.successful_message = 1; # Il faut modifier ça dans datagramReceived       
+        #reactor.callLater(self.delay, self.resent_packet, message);
 
 ########### PUT_SWITCH_ROOM     
    
@@ -197,8 +189,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_SWITCH_ROOM = (self.seq_number,self.userID,RoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.successful_switch_room = 1; # Il faut modifier ça dans datagramReceived       
-        reactor.callLater(self.delay, self.resent_packet, RoomID);
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+        
+        #self.successful_switch_room = 1; # Il faut modifier ça dans datagramReceived       
+        #reactor.callLater(self.delay, self.resent_packet, RoomID);
 
 ########### PUT_LOGOUT     
    
@@ -216,9 +212,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-        
-        self.successful_logout = 1; # Il faut modifier ça dans datagramReceived    
-        reactor.callLater(self.delay, self.resent_packet, "not used");
+
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+                
+        #self.successful_logout = 1; # Il faut modifier ça dans datagramReceived    
+        #reactor.callLater(self.delay, self.resent_packet, "not used");
 
 ########### GET_PING     
    
@@ -236,9 +236,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         packet = packing.GET_PING = GET_PING(self.seq_number,self.user_ID,self.lastEventID,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-        
-        self.successful_ping = 1; # Il faut modifier ça dans datagramReceived    
-        reactor.callLater(self.delay, self.resent_packet, "not used");
+
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+                
+        #self.successful_ping = 1; # Il faut modifier ça dans datagramReceived    
+        #reactor.callLater(self.delay, self.resent_packet, "not used");
 
 ########### GET_EVENTS     
    
@@ -256,9 +260,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         packet = packing.GET_EVENTS = (self.seq_number,self.userID,nbr_events,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-        
-        self.successful_events = 1; # Il faut modifier ça dans datagramReceived    
-        reactor.callLater(self.delay, self.resent_packet, nbr_events);
+
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+                
+        #self.successful_events = 1; # Il faut modifier ça dans datagramReceived    
+        #reactor.callLater(self.delay, self.resent_packet, nbr_events);
 
 ########### GET_ROOMS     
    
@@ -276,9 +284,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         packet = packing.GET_ROOMS = (self.seq_number,self.userID,first_room_id,self.nbr_rooms)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-        
-        self.successful_rooms = 1; # Il faut modifier ça dans datagramReceived     
-        reactor.callLater(self.delay, self.resent_packet, first_room_id);
+
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+                
+        #self.successful_rooms = 1; # Il faut modifier ça dans datagramReceived     
+        #reactor.callLater(self.delay, self.resent_packet, first_room_id);
 
 ########### GET_USERS     
    
@@ -296,9 +308,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
         packet = packing.GET_USERS = (self.seq_number,self.userID,first_user_id,self.nbr_users,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
-        
-        self.successful_users = 1; # Il faut modifier ça dans datagramReceived     
-        reactor.callLater(self.delay, self.resent_packet, first_user_id);
+
+        self.packets_sent[self.seq_number] = packet
+        reactor.callLater(self.delay, self.resent_packet, self.seq_number);
+        self.seq_number = self.seq_number + 1
+                
+        #self.successful_users = 1; # Il faut modifier ça dans datagramReceived     
+        #reactor.callLater(self.delay, self.resent_packet, first_user_id);
 
 ###########      
                
@@ -321,13 +337,17 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
 
         fieldsList = unpacking.decode(datagram)
-        if fieldsList[0][1] == self.seq_number : #Le message reçu est celui-attendu
+        
+        if fieldsList[0][1] in self.packets_sent: #Le message reçu est attendu
+        
+            del self.packets_sent[fieldsList[0][1]] # On supprime the packet from the packet list to resend
+        
+            ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN            
-                self.successful_login = 0;            
+                       
                 if fieldsList[1][0] == 0 : #Status code = success
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
-                    self.seq_number +=1
                 elif fieldsList[1][0] == 1 :
                     self.clientProxy.connectionRejectedONE('Unknow error');
                 elif fieldsList[1][0] == 2 :
@@ -337,43 +357,98 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 elif fieldsList[1][0] == 4 :
                     self.clientProxy.connectionRejectedONE('Username not available');
                 else :
-                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');                    
-"""               
-            elif fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
-                self.userID = 0;
-                self.lastEventID = 0;
-                self.seq.number = 0;
-                self.successful_login = 0;
-                self.store.removeAllMovies();
-                self.store.removeAllUsers();
-                    
-            elif fieldsList[0][0] == 5 : #Le message reçu est de type RESPONSE_PING
-                pass
-                    
-            elif fieldsList[0][0] == 7 : #Le message reçu est de type RESPONSE_EVENTS
-                pass
-
-            elif fieldsList[0][0] == 9 : #Le message reçu est de type RESPONSE_ROOMS
-                for i in range(len(fieldsList)):
-                    if store.getMovieById(fieldsList[1+i][3]) == None:   
-                        store.addMovie(fieldsList[1+i][3],fieldsList[1+i][1], fieldsList[1+i][2], fieldsList[1+i][0],fieldsList[1+i][4]);
-            #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users                
-
-
-            elif fieldsList[0][0] == 11 : #Le message reçu est de type RESPONSE_USERS
-                pass
-
-            elif fieldsList[0][0] == 13 : #Le message reçu est de type RESPONSE_SWITCH_ROOM
-                pass
-
-            elif fieldsList[0][0] == 15 : #Le message reçu est de type RESPONSE_NEW_MESSAGE
-                pass
-            
-     
+                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');
+                                    
+        if fieldsList[0][2] == self.userID: # Autentification d'usager
         
-    
+            if fieldsList[0][1] in self.packets_sent: #Le message reçu est attendu
+               
+                del self.packets_sent[fieldsList[0][1]] # On supprime the packet from the packet list to resend
+                 
+                ########### RESPONSE_LOGOUT                
+                if fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
+                    self.userID = 0;
+                    self.lastEventID = 0;
+                    self.seq.number = 0;
+                    self.successful_login = 0;
+                    self.packets_sent.clear();
+                    self.store.removeAllMovies();
+                    self.store.removeAllUsers();
+                    
+                ########### RESPONSE_PING
+                elif fieldsList[0][0] == 5 : #Le message reçu est de type RESPONSE_PING
+                    pass
                 
-"""             
+                ########### RESPONSE_EVENTS        
+                elif fieldsList[0][0] == 7 : #Le message reçu est de type RESPONSE_EVENTS
+                    pass
+                    
+                ########### RESPONSE_ROOMS
+                elif fieldsList[0][0] == 9 : #Le message reçu est de type RESPONSE_ROOMS
+                
+                    for i in range(len(fieldsList)-1):
+                        if store.getMovieById(fieldsList[1+i][0]) == None:   
+                            store.addMovie(fieldsList[1+i][3],fieldsList[1+i][1], fieldsList[1+i][2], fieldsList[1+i][0],fieldsList[1+i][4]);
+                                                    #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users                
+
+                ########### RESPONSE_USERS
+                elif fieldsList[0][0] == 11 : #Le message reçu est de type RESPONSE_USERS
+                    pass
+                
+                ########### RESPONSE_SWITCH_ROOM
+                elif fieldsList[0][0] == 13 : #Le message reçu est de type RESPONSE_SWITCH_ROOM
+                    if fieldsList[1][0] == 0 : #Status code = success
+                        self.clientProxy.connectionRejectedONE('Change room succesful'); ###################### pas la bonne fonction
+                    elif fieldsList[1][0] == 1 :
+                        self.clientProxy.connectionRejectedONE('Unknow error');
+                    else :
+                        self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_SWITCH_ROOM'); 
+                    
+                ########### RESPONSE_NEW_MESSAGE
+                elif fieldsList[0][0] == 15 : #Le message reçu est de type RESPONSE_NEW_MESSAGE
+                    if fieldsList[1][0] == 0 : #Status code = success
+                        self.clientProxy.connectionRejectedONE('The message was well transmitted'); ###################### pas la bonne fonction
+                    elif fieldsList[1][0] == 1 :
+                        self.clientProxy.connectionRejectedONE('Unknow error');
+                    elif fieldsList[1][0] == 2 :
+                        self.clientProxy.connectionRejectedONE('Invalid room (not in the system)');
+                    elif fieldsList[1][0] == 3 :
+                        self.clientProxy.connectionRejectedONE('Incorrect room (You must send a message only into your current room)');
+                    else :
+                        self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_NEW_MESSAGE');                
+
+########### 
+        
+###########     
+    """
+    def resent_packet(self,data):
+
+        if self.successful_login == 1: # login's packet lost
+            self.sendLoginRequestOIE(data)
+            
+        if self.successful_message == 1: # message's packet lost
+            self.sendChatMessageOIE(data)
+             
+        if self.successful_switch_room == 1: # switch_room's packet lost
+            self.sendJoinRoomRequestOIE(data)
+            
+        if self.successful_logout == 1: # logout's packet lost
+            self.sendLeaveSystemRequestOIE()
+            
+        if self.successful_ping == 1: # ping's packet lost
+            self.sendGetPingRequestOIE()
+            
+        if self.successful_events == 1: # events's packet lost
+            self.sendGetEventsRequestOIE(data)
+            
+        if self.successful_rooms == 1: # rooms' packet lost
+            self.sendGetRoomsRequestOIE(data)            
+        
+        if self.successful_users == 1: # users' packet lost
+            self.sendGetUsersRequestOIE(data)
+            
+        """
+                     
                 
                 
                 
