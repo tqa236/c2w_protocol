@@ -3,7 +3,7 @@ from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
 import logging
 from . import unpacking
-from . import RESPONSE_LOGIN
+from . import packing
 #import c2w.main.constants.ROOM_IDS
 
 logging.basicConfig()
