@@ -6,6 +6,7 @@ logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
 
 import time
+import c2w.main.constants.ROOM_IDS
 
 from . import unpacking
 from . import packing
@@ -64,19 +65,20 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.clientProxy = clientProxy
         self.lossPr = lossPr
         
-        self.seq_number = 0
-        self.userID = 0
-        self.lastEventID = 0
-        self.userRoomID = 0
+        self.seq_number = 0 #This variable contains the sequence number used to track packet loss
+        self.userID = 0 #This vatiable contains the id of the client that was set by the server (initially set to 0)
+        self.lastEventID = 0 #This variable contains the id of the last event the client is currently aware of.
+        self.userRoomID = 0 #This variable contains the room the client is currently in.
+        self.futureRoomID = 0 #This variable contains the room the client want to switch to
+        self.entry_number_awaited = 0 #This variable contains the number of entry the client is expecting from the next multi-entry response
         
         self.packet_stored = 0 #This variable contains a packet to be resent if its answer is not received. When it is equals to 0 there is no packet to resend.
         self.packet_awaited = 16 #This variable contains the type of the next packet to be received. When it is equals to 16 there is no packet to be received.
               
-        self.store = c2wClientModel() #The c2wClientModel is a class used to store information about users and movies
+        self.store = c2wClientModel() #The c2wClientModel is a class used to store all data about users and movies
         
-        self.delay = 0.5 #500ms
-        self.nbr_rooms = 50 # numéro de rooms que le client va demander en chaque GET_ROOMS
-        self.nbr_users = 50 # numéro de users que le client va demander en chaque GET_USERS
+        self.delay = 0.5 #The length of the timer that is armed whenever the client send a request. When it runs out the client resend the message if no answer was given.
+        self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
         
         
     def startProtocol(self):
@@ -89,7 +91,18 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
-        
+        self.store.addMovie(c2w.main.constants.ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
+
+
+########### The function that resends packets whenever the timer runs out.
+
+    def resend_packet(self):
+    
+        if packet_awaited != 16 and packet_stored != 0 : #Check if there is a packet to be resent
+            self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
+            reactor.callLater(self.delay, self.resend_packet)              
+
+
 ########### PUT_LOGIN  
    
     def sendLoginRequestOIE(self, userName):
@@ -99,10 +112,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         The client proxy calls this function when the user clicks on
         the login button.
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGIN packet to the server
-        # - Re-emit it if the timer ran out
                
         moduleLogger.debug('loginRequest called with username=%s', userName)
         packet = packing.PUT_LOGIN(self.seq_number,userName)        
@@ -113,14 +122,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.packet_awaited = 2
         reactor.callLater(self.delay, self.resend_packet)
 
-########### The function which resend any request that needs to be
 
-    def resent_packet(self):
-    
-        if packet_awaited != 16 and packet_stored != 0 : #Check of there is a packet to be resent
-            self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
-            reactor.callLater(self.delay, self.resend_packet)   
-                     
 ########### PUT_NEW_MESSAGE    
    
     def sendChatMessageOIE(self, message):
@@ -138,10 +140,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
            message is handled properly, i.e., it is shown only by the
            client(s) who are in the same room.
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_NEW_MESSAGE packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Message request called with content=%s', message)
         packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
@@ -167,15 +165,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             c2w.main.constants.ROOM_IDS.MAIN_ROOM when the user
             wants to go back to the main room.
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_SWITCH_ROOM with the roomName field packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Join Room request called with room name = %s', roomName)
         
-        RoomID = store.getMovieByTitle(roomName).movieId; # Je ne suis pas sûr si movieId est dejà une integer, il faut conférer ça.
-        packet = packing.PUT_SWITCH_ROOM = (self.seq_number,self.userID,RoomID)      
+        self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
+        packet = packing.PUT_SWITCH_ROOM = (self.seq_number, self.userID, self.futureRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
@@ -190,10 +184,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGOUT packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Leave system request called')
         
@@ -209,13 +199,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
    
     def sendGetPingRequestOIE(self):
         """
-        Called by the client proxy  when the user
-        has clicked on the leave button in the main room.
+        This function is used by the chatClientProtocol to get ping from the server
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGOUT packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Get ping request called')
         
@@ -231,17 +216,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
    
     def sendGetEventsRequestOIE(self,nbr_events):
         """
-        Called by the client proxy  when the user
-        has clicked on the leave button in the main room.
+        This function is used by the chatClientProtocol when a ping from the server has revealed that the client is not synchronized yet
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGOUT packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Get events request called')
         
-        packet = packing.GET_EVENTS = (self.seq_number,self.userID,nbr_events,self.userRoomID)      
+        self.entry_number_awaited = nbre_events
+        packet = packing.GET_EVENTS = (self.seq_number, self.userID, self.lastEventID, nbr_events, self.userRoomID)
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
@@ -251,19 +232,15 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
 ########### GET_ROOMS     
    
-    def sendGetRoomsRequestOIE(self,first_room_id):
+    def sendGetRoomsRequestOIE(self,first_room_id, nbr_rooms):
         """
-        Called by the client proxy  when the user
-        has clicked on the leave button in the main room.
+        This fuction is used by the chatClientProtocol to get a list of current rooms
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGOUT packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Get rooms request called')
         
-        packet = packing.GET_ROOMS = (self.seq_number,self.userID,first_room_id,self.nbr_rooms)      
+        self.entry_number_awaited = nbr_rooms
+        packet = packing.GET_ROOMS = (self.seq_number, self.userID, first_room_id, nbr_rooms)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
@@ -272,19 +249,15 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
 ########### GET_USERS     
    
-    def sendGetUsersRequestOIE(self,first_user_id):
+    def sendGetUsersRequestOIE(self,first_user_id, nbr_users):
         """
-        Called by the client proxy  when the user
-        has clicked on the leave button in the main room.
+        This function is used by the chatClientProtocol to get a list of current users
         """
-        #This function should :
-        # - Arm a timer
-        # - Send a correctly formed PUT_LOGOUT packet to the server
-        # - Re-emit it if the timer ran out
         
         moduleLogger.debug('Get users request called')
-
-        packet = packing.GET_USERS = (self.seq_number,self.userID,first_user_id,self.nbr_users,self.userRoomID)      
+        
+        self.entry_number_awaited = nbr_users
+        packet = packing.GET_USERS = (self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
@@ -304,117 +277,160 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet.
         """
 
-        #This function should :
-        # - Unpack the datagram
-        # - Read the  SEQ_NUMBER and MESSAGE_TYPE fields in the header
-        # - If the SEQ_NUMBER is the one that is awaited, proceed, if not stop right there
-        # - Disarm the timer that was armed with the last sendRequest
-        # - Select the correct following function to read the unpacked datagram based on MESSAGE_TYPE field
-
-
         fieldsList = unpacking.decode(datagram)
         
-        #if fieldsList[0][1] in self.packets_sent: #Le message reçu est attendu
-        #    del self.packets_sent[fieldsList[0][1]] # On supprime the packet from the packet list to resend
-        
-        
         if fieldsList[0][0] == self.packet_awaited and fieldsList[0][1] == self.seq_number :
-            #Verification que le message reçu est celui qui est attendu
+            #Check if the message received is the one that is awaited (type and sequence number check)
             self.packet_stored = 0
             self.packet_awaited = 16
             self.seq_number += 1
             
             ########### RESPONSE_LOGIN
-            if fieldsList[0][0] == 1 : #Le message reçu est de type RESPONSE_LOGIN            
+            if fieldsList[0][0] == 1 :          
                        
-                if fieldsList[1][0] == 0 : #Status code = success
+                if fieldsList[1][0] == 0 :
+                    moduleLogger.debug('Login status : Done')
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
+                    self.sendGetUsersRequestOIE(1, 255)
                 elif fieldsList[1][0] == 1 :
                     self.clientProxy.connectionRejectedONE('Unknow error')
+                    moduleLogger.debug('Login status : Unknown error')
                 elif fieldsList[1][0] == 2 :
                     self.clientProxy.connectionRejectedONE('Too many users')
+                    moduleLogger.debug('Login status : Too many users')
                 elif fieldsList[1][0] == 3 :
                     self.clientProxy.connectionRejectedONE('Invalid username')
+                    moduleLogger.debug('Login status : Invalid username')
                 elif fieldsList[1][0] == 4 :
                     self.clientProxy.connectionRejectedONE('Username not available')
-                else :
-                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_LOGIN');
+                    moduleLogger.debug('Login status : Username not available')
                                      
             ########### RESPONSE_LOGOUT                
-            if fieldsList[0][0] == 3 : #Le message reçu est de type RESPONSE_LOGOUT
+            if fieldsList[0][0] == 3 :
                 self.userID = 0
                 self.lastEventID = 0
-                self.seq.number = 0
+                self.seq_number = 0
                 self.packet_stored = 0
                 self.packet_awaited = 16
                 self.store.removeAllMovies()
                 self.store.removeAllUsers()
+                self.clientProxy.leaveSystemOKONE()
+                moduleLogger.debug('Logout status : Done')
                     
             ########### RESPONSE_PING
-            elif fieldsList[0][0] == 5 : #Le message reçu est de type RESPONSE_PING
-                pass
+            elif fieldsList[0][0] == 5 :
+                lastServerEventID = fieldsList[1][0]
+                if self.lastEventID != lastServerEventID :
+                    self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                else :
+                    reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
                 
             ########### RESPONSE_EVENTS        
-            elif fieldsList[0][0] == 7 : #Le message reçu est de type RESPONSE_EVENTS
-                pass
+            elif fieldsList[0][0] == 7 :
+                n = 0
+                for i in range(len(fieldsList[1])):
+                    n += 1
+                    if fieldsList[1][i][1] == 1 : #Message event
+                        self.lastEventID = fieldsList[1][i][0]
+                        
+                        user = self.store.getUserById(fieldsList[1][i][3])
+                        if user.userChatRoom == self.userRoomID :
+                            self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
+                        
+                    elif fieldsList[1][i][1] == 2 : #New user event
+                        self.lastEventID = fieldsList[1][i][0]
+                        
+                        room = self.store.getMovieByID(fieldsList[1][i][2]).movieTitle
+                        self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room)
+                        
+                        userList = store.getUserList() #get the user list in the appropriate format
+                        for i in range(len(userList)) :
+                            room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
+                            userList[i] = (userList[i].userName, room)
+                        self.clientProxy.setUserListONE(userList)
+                        
+                    elif fieldsList[1][i][1] == 3 : #Switch room event
+                        self.lastEventID = fieldsList[1][i][0]
+                        
+                        name = self.store.getUserByID(fieldsList[1][i][3]).userName
+                        room = self.store.getMovieByID(fieldsList[1][i][4]).movieTitle
+                        self.store.updateUserChatroom(name, fieldsList[1][i][4])
+                        self.clientProxy.userUpdateReceivedONE(name, room)
+                    
+                    elif fieldsList[1][i][1] == 4 : #Logout event
+                        self.lastEventID = fieldsList[1][i][0]
+                        
+                        name = self.store.getUserByID(fieldsList[1][i][3]).userName
+                        self.store.removeUser(name)
+                        self.clientProxy.userUpdateReceivedONE(name, c2w.main.constants.ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
+                        
+                if n < self.entry_number_awaited and n !=0 :
+                    self.sendGetEventsRequestOIE(self.entry_number_awaited - n)
+                else :    
+                    reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
                     
             ########### RESPONSE_ROOMS
-            elif fieldsList[0][0] == 9 : #Le message reçu est de type RESPONSE_ROOMS
+            elif fieldsList[0][0] == 9 :
+                #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
+                #AddMovie accepts it in the following form : Title, IP, Port, ID 
+                n = 0  
+                for i in range(len(fieldsList[1])):
+                    n += 1
+                    elif self.store.getMovieById(fieldsList[1][i][0]) == None :   
+                        self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0], fieldsList[1][i][4])
                 
-                for i in range(len(fieldsList)-1):
-                    if store.getMovieById(fieldsList[1+i][0]) == None:   
-                        store.addMovie(fieldsList[1+i][3],fieldsList[1+i][1], fieldsList[1+i][2], fieldsList[1+i][0],fieldsList[1+i][4]);
-                        #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users                
+                if n < self.entry_number_awaited and n !=0 :
+                    self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
+                else : 
+                    movieList = self.store.getMovieList() #get the movie list in the appropriate format
+                    for i in range(1, len(movieList)) :
+                        movieList[i] = (movieList[i].movieTitle, movieList[i].movieIpAdress, movieList[i].moviePort)
+                
+                    userList = store.getUserList() #get the user list in the appropriate format
+                    for i in range(len(userList)) :
+                        room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
+                        userList[i] = (userList[i].userName, room)
+                    self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
+                
+                    self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                                   
 
             ########### RESPONSE_USERS
-            elif fieldsList[0][0] == 11 : #Le message reçu est de type RESPONSE_USERS
-                pass
+            elif fieldsList[0][0] == 11 :
+                n = 0
+                #FieldsList returns the data in the following form : user_id, user_name, room_id
+                #AddUser accepts it in the following form : Name, ID, Chatroom
+                for i in range(1, len(fieldsList[1])):
+                    n += 1
+                    if self.store.getUserById(fieldsList[1][i][0]) == None :
+                        self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
+                        
+                if n < self.entry_number_awaited and n !=0 :
+                    self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
+                else :
+                    self.sendGetRoomsRequestOIE(1, 255)
                 
             ########### RESPONSE_SWITCH_ROOM
-            elif fieldsList[0][0] == 13 : #Le message reçu est de type RESPONSE_SWITCH_ROOM
-                if fieldsList[1][0] == 0 : #Status code = success
-                    self.clientProxy.connectionRejectedONE('Change room succesful'); ###################### pas la bonne fonction
+            elif fieldsList[0][0] == 13 :
+                if fieldsList[1][0] == 0 :
+                    self.clientProxy.joinRoomOKONE()
+                    self.userRoomID = self.futureRoomID
                 elif fieldsList[1][0] == 1 :
-                    self.clientProxy.connectionRejectedONE('Unknow error');
-                else :
-                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_SWITCH_ROOM'); 
+                    moduleLogger.debug('Switch room status : Unknow error')
                     
             ########### RESPONSE_NEW_MESSAGE
-            elif fieldsList[0][0] == 15 : #Le message reçu est de type RESPONSE_NEW_MESSAGE
-                if fieldsList[1][0] == 0 : #Status code = success
-                    self.clientProxy.connectionRejectedONE('The message was well transmitted'); ###################### pas la bonne fonction
+            elif fieldsList[0][0] == 15 :
+                if fieldsList[1][0] == 0 :
+                    moduleLogger.debug('Message status : transmitted')
                 elif fieldsList[1][0] == 1 :
-                    self.clientProxy.connectionRejectedONE('Unknow error');
+                    moduleLogger.debug('Message status : Unknown error')
+                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Unknown error')
                 elif fieldsList[1][0] == 2 :
-                    self.clientProxy.connectionRejectedONE('Invalid room (not in the system)');
+                    moduleLogger.debug('Message status : Invalid room')
+                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Invalid room')
                 elif fieldsList[1][0] == 3 :
-                    self.clientProxy.connectionRejectedONE('Incorrect room (You must send a message only into your current room)');
-                else :
-                    self.clientProxy.connectionRejectedONE('Impossible to interpret RESPONSE_NEW_MESSAGE');                
+                    moduleLogger.debug('Message status : Incorrect room (You must send a message only into your current room)')
+                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Incorrect room (You must send a message only into your current room)')             
 
-########### 
-        
-###########     
-    
-                     
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
+###########

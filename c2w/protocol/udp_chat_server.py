@@ -4,7 +4,7 @@ from c2w.main.lossy_transport import LossyTransport
 import logging
 from . import unpacking
 from . import packing
-#import c2w.main.constants.ROOM_IDS
+import c2w.main.constants.ROOM_IDS
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
