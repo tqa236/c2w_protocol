@@ -26,7 +26,7 @@ def RESPONSE_LOGIN(seq_number, user_id, username, last_event, status_code):
     server_id = 0
     message_length = 5
     last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = last_event - last_event_id0*math.pow(2,16)
+    last_event_id0 = last_event - last_event_id1*math.pow(2,16)
     
     code = '!BHBH' + 'BBBH'
     data = struct.pack(code, message_type, seq_number, server_id, message_length, status_code, user_id, last_event_id1, last_event_id0)
@@ -62,7 +62,7 @@ def GET_PING(seq_number, user_id, last_event_id, room_id):
     message_length = 4
     
     last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = last_event - last_event_id0*math.pow(2,16)
+    last_event_id0 = last_event - last_event_id1*math.pow(2,16)
     
     code = '!BHBH' + 'BHB'
     data = struct.pack(code, message_type, seq_number, user_id, message_length, last_event_id1, last_event_id0, room_id)
@@ -75,7 +75,7 @@ def RESPONSE_PING(last_event):
     message_length = 3
     
     last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = last_event - last_event_id0*math.pow(2,16)
+    last_event_id0 = last_event - last_event_id1*math.pow(2,16)
     
     code = '!BHBH' + 'BH'
     data = struct.pack(code, message_type, seq_number, user_id, message_length, last_event_id1, last_event_id0)
@@ -89,7 +89,7 @@ def GET_EVENTS(seq_number, user_id, last_event_id, nbr_events, room_id):
     message_length = 5
     
     last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = last_event - last_event_id0*math.pow(2,16)
+    last_event_id0 = last_event - last_event_id1*math.pow(2,16)
     
     code = '!BHBH' + 'BHBB'
     data = struct.pack(code, message_type, seq_number, user_id, message_length, last_event_id1,last_event_id0, nbr_events, room_id)
@@ -98,10 +98,34 @@ def GET_EVENTS(seq_number, user_id, last_event_id, nbr_events, room_id):
     
 ###########
     
-def RESPONSE_EVENTS(nbr_events, events_list) :
-    return None
+def RESPONSE_EVENTS(seq_number, user_id, nbr_events, events_list) :
+    # On organise les events de la façon suivante : Event_id, Event_type, room_id, user_id + les composantes particulières à chaque type dans l'ordre
+    message_type = 7
+    message_length = 1
+    for i in range(len(events_list)) :
+        message_length += len(events_list[i])
     
-
+    code = 'BHBH' + 'B'
+    data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_events)
+    for i in range(len(events_list)) :
+        event_id = events_list[i][0]
+        event_id1 = math.floor(event/math.pow(2,16))
+        event_id0 = last_event - event_id1*math.pow(2,16)
+        code = 'BHBBB'
+        if events_list[i][1] == 1 :
+            code += 'H' + str(events_list[i][4]) + 's'
+            data += struct.pack(code, events_list[i][0], events_list[i][1], events_list[i][2], events_list[i][3], events_list[i][4], events_list[i][5])
+        elif events_list[i][1] == 2 :
+            code += 'B' + str(events_list[i][4]) + 's'
+            data += struct.pack(code, events_list[i][0], events_list[i][1], events_list[i][2], events_list[i][3], events_list[i][4], events_list[i][5])
+        elif events_list[i][2] == 3 :
+            code += 'B'
+            data += struct.pack(code, events_list[i][0], events_list[i][1], events_list[i][2], events_list[i][3], events_list[i][4])
+        else :
+            data += struct.pack(code, events_list[i][0], events_list[i][1], events_list[i][2], events_list[i][3])
+    
+    return data
+        
 ###########
 
 def GET_ROOMS(seq_number,user_id,first_room_id,nbr_rooms):
@@ -116,8 +140,20 @@ def GET_ROOMS(seq_number,user_id,first_room_id,nbr_rooms):
     
 ###########
     
-def RESPONSE_ROOMS(nbr_rooms, rooms_list) :
-    return None
+def RESPONSE_ROOMS(seq_number, user_id, nbr_rooms, rooms_list) :
+    message_type = 9
+    message_length = 1
+    for i in range(len(rooms_list)) :
+        message_length += len(rooms_list[i])
+    
+    code = 'BHBH' + 'B'
+    data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_rooms)
+    for i in range(len(rooms_list)) :
+        code = 'BBBBHB' + str(rooms_list[i][3]) + 'sB'
+        ip1, ip2, ip3, ip4 = misc.codeIpAdress(rooms_list[i][1])
+        data += struct.pack(code, rooms_list[i][0], ip1, ip2, ip3, ip4, rooms_list[i][2], rooms_list[3], rooms_list[4], rooms_list[5])
+    
+    return data
     
 ###########
 
@@ -133,8 +169,20 @@ def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
 
 ###########
     
-def RESPONSE_USERS(nbr_users, users_list) :
-    return None
+def RESPONSE_USERS(seq_number, user_id, nbr_users, users_list) :
+    message_type = 11
+    message_length = 1
+    for i in range(len(users_list)) :
+        message_length += len(users_list[i])
+    
+    code = 'BHBH' + 'B'
+    data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_users)
+    for i in range(len(users_list)) :
+        code = 'BB' + str(users_list[i][1]) + 'sB'
+        ip1, ip2, ip3, ip4 = misc.codeIpAdress(rooms_list[i][1])
+        data += struct.pack(code, users_list[i][0], users_list[i][1], users_list[2], users_list[3])
+    
+    return data
     
     
 ###########     

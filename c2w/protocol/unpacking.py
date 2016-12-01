@@ -158,12 +158,12 @@ def decodeEvents(entryNumber, datagram):
         if eventType == 1 : #Message event (room_id, user_id, message_length, message)
             information = struct.unpack('!BBH', datagram[4:8])
             message = struct.unpack('!'+str(information[2])+'s',datagram[8:])
-            resultList.append([eventId, eventType, information[0], information[1], message.decode('utf-8')]) #Returned in the following form : EventID, Type, Room, User, Message
+            resultList.append([eventId, eventType, information[0], information[1], message[0].decode('utf-8')]) #Returned in the following form : EventID, Type, Room, User, Message
             datagram = datagram[(8+information[2]):]
         if eventType == 2 : #New user event(room_id, user_id, username_length, username)
             information = struct.unpack('!BBB', datagram[4:7])
             message = struct.unpack('!'+str(information[2])+'s',datagram[7:])
-            resultList.append([eventId, eventType, information[0], information[1], message.decode('utf-8')]) #Returned in the following form : EventID, Type, Room, User, Username
+            resultList.append([eventId, eventType, information[0], information[1], message[0].decode('utf-8')]) #Returned in the following form : EventID, Type, Room, User, Username
             datagram = datagram[(7+information[2]):]
         if eventType == 3 : #Switch room event(room_id, user_id, new_room_id)
             information = struct.unpack('!BBB', datagram[4:7])

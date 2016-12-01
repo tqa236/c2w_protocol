@@ -285,6 +285,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             self.packet_awaited = 16
             self.seq_number += 1
             
+            
             ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
                        
@@ -305,6 +306,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 elif fieldsList[1][0] == 4 :
                     self.clientProxy.connectionRejectedONE('Username not available')
                     moduleLogger.debug('Login status : Username not available')
+            
                                      
             ########### RESPONSE_LOGOUT                
             if fieldsList[0][0] == 3 :
@@ -317,14 +319,20 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 self.store.removeAllUsers()
                 self.clientProxy.leaveSystemOKONE()
                 moduleLogger.debug('Logout status : Done')
+            
                     
             ########### RESPONSE_PING
             elif fieldsList[0][0] == 5 :
                 lastServerEventID = fieldsList[1][0]
                 if self.lastEventID != lastServerEventID :
+                    moduleLogger.debug('Ping status : Not up-to-date, getting events required')
                     self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                    
                 else :
+                    moduleLogger.debug('Ping status : up-to-date, preparing next ping')
                     reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                    
+            
                 
             ########### RESPONSE_EVENTS        
             elif fieldsList[0][0] == 7 :
@@ -337,6 +345,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         user = self.store.getUserById(fieldsList[1][i][3])
                         if user.userChatRoom == self.userRoomID :
                             self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
+                            moduleLogger.debug('GetEvents status : New message available')
                         
                     elif fieldsList[1][i][1] == 2 : #New user event
                         self.lastEventID = fieldsList[1][i][0]
@@ -349,6 +358,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                             room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
                             userList[i] = (userList[i].userName, room)
                         self.clientProxy.setUserListONE(userList)
+                        moduleLogger.debug('GetEvents status : New user')
                         
                     elif fieldsList[1][i][1] == 3 : #Switch room event
                         self.lastEventID = fieldsList[1][i][0]
@@ -357,6 +367,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         room = self.store.getMovieByID(fieldsList[1][i][4]).movieTitle
                         self.store.updateUserChatroom(name, fieldsList[1][i][4])
                         self.clientProxy.userUpdateReceivedONE(name, room)
+                        moduleLogger.debug('GetEvent status : User switched room')
                     
                     elif fieldsList[1][i][1] == 4 : #Logout event
                         self.lastEventID = fieldsList[1][i][0]
@@ -364,24 +375,33 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         name = self.store.getUserByID(fieldsList[1][i][3]).userName
                         self.store.removeUser(name)
                         self.clientProxy.userUpdateReceivedONE(name, c2w.main.constants.ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
+                        moduleLogger.debug('GetEvent status : User logged out')
                         
                 if n < self.entry_number_awaited and n !=0 :
+                    moduleLogger.debug('GetEvent status : Asking for more events')
                     self.sendGetEventsRequestOIE(self.entry_number_awaited - n)
-                else :    
+                    
+                else :
+                    moduleLogger.debug('GetEvent status : up-to-date, preparing next ping')
                     reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                    
+            
                     
             ########### RESPONSE_ROOMS
             elif fieldsList[0][0] == 9 :
                 #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
                 #AddMovie accepts it in the following form : Title, IP, Port, ID 
-                n = 0  
+                n = 0
+                moduleLogger.debug('Room status : Rooms list received')
                 for i in range(len(fieldsList[1])):
                     n += 1
                     elif self.store.getMovieById(fieldsList[1][i][0]) == None :   
                         self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0], fieldsList[1][i][4])
                 
                 if n < self.entry_number_awaited and n !=0 :
+                    moduleLogger.debug('Room status : Asking for more rooms')
                     self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
+                    
                 else : 
                     movieList = self.store.getMovieList() #get the movie list in the appropriate format
                     for i in range(1, len(movieList)) :
@@ -392,8 +412,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
                         userList[i] = (userList[i].userName, room)
                     self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
-                
+                    moduleLogger.debug('Room status : UI has been updated')
+                    
+                    moduleLogger.debug('Room status : UI is ready, starting ping cycle')
                     self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                    
                                    
 
             ########### RESPONSE_USERS
@@ -401,24 +424,30 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 n = 0
                 #FieldsList returns the data in the following form : user_id, user_name, room_id
                 #AddUser accepts it in the following form : Name, ID, Chatroom
+                moduleLogger.debug('Users status : Users list received')
                 for i in range(1, len(fieldsList[1])):
                     n += 1
                     if self.store.getUserById(fieldsList[1][i][0]) == None :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         
                 if n < self.entry_number_awaited and n !=0 :
+                    moduleLogger.debug('Users status : Asking for more users')
                     self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
                 else :
+                    moduleLogger.debug('Users status : Users list fully updated, asking for rooms')
                     self.sendGetRoomsRequestOIE(1, 255)
+            
                 
             ########### RESPONSE_SWITCH_ROOM
             elif fieldsList[0][0] == 13 :
                 if fieldsList[1][0] == 0 :
                     self.clientProxy.joinRoomOKONE()
                     self.userRoomID = self.futureRoomID
+                    moduleLogger.debug('Switch room status : Done')
                 elif fieldsList[1][0] == 1 :
                     moduleLogger.debug('Switch room status : Unknow error')
-                    
+            
+            
             ########### RESPONSE_NEW_MESSAGE
             elif fieldsList[0][0] == 15 :
                 if fieldsList[1][0] == 0 :
