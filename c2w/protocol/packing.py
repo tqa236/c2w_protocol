@@ -18,7 +18,6 @@ def PUT_LOGIN(seq_number, username):
     return data
 
 
-
 ###########
 
 def RESPONSE_LOGIN(seq_number, user_id, username, last_event, status_code):
@@ -95,6 +94,73 @@ def GET_EVENTS(seq_number, user_id, last_event_id, nbr_events, room_id):
     data = struct.pack(code, message_type, seq_number, user_id, message_length, last_event_id1,last_event_id0, nbr_events, room_id)
 
     return data
+    
+###########
+    
+def RESPONSE_EVENTS(nbr_events, events_list) :
+    return None
+    
+
+###########
+
+def GET_ROOMS(seq_number,user_id,first_room_id,nbr_rooms):
+    
+    message_type = 8
+    message_length = 2
+
+    code = '!BHBH' + 'BB'
+    data = struct.pack(code,message_type,seq_number,user_id,message_length,first_room_id,nbr_rooms)
+
+    return data
+    
+###########
+    
+def RESPONSE_ROOMS(nbr_rooms, rooms_list) :
+    return None
+    
+###########
+
+def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
+    
+    message_type = 10
+    message1_length = 3
+
+    code = '!BHBH' + 'BBB'
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,first_user_id,nbr_users,room_id)
+
+    return data
+
+###########
+    
+def RESPONSE_USERS(nbr_users, users_list) :
+    return None
+    
+    
+###########     
+       
+def PUT_SWITCH_ROOM(seq_number,user_id,room_id):
+    
+    message_type = 12
+    message1_length = 1
+
+    code = '!BHBH' + 'B'
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,room_id);
+
+    return data;
+    
+    
+###########
+    
+def RESPONSE_SWITCH_ROOM(seq_number,user_id,status_code):
+
+    message_type = 13;
+    message1_length = 1;
+
+
+    code = '!BHBH' + 'B';
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,status_code);
+    return data;
+
 
 ###########     
        
@@ -109,79 +175,21 @@ def PUT_NEW_MESSAGE(seq_number,user_id,room_id,message):
 
     return data;
 
-###########     
-       
-def PUT_SWITCH_ROOM(seq_number,user_id,room_id):
-    
-    message_type = 12
-    message1_length = 1
 
-    code = '!BHBH' + 'B'
-    data = struct.pack(code,message_type,seq_number,user_id,message1_length,room_id);
-
-    return data;
-    
-
-    
-
-     
-
-    
-###########
-
-def GET_ROOMS(seq_number,user_id,first_room_id,nbr_rooms):
-    
-    message_type = 8
-    message_length = 2
-
-    code = '!BHBH' + 'BB'
-    data = struct.pack(code,message_type,seq_number,user_id,message_length,first_room_id,nbr_rooms)
-
-    return data
-    
-###########
-
-def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
-    
-    message_type = 10
-    message1_length = 3
-
-    code = '!BHBH' + 'BBB'
-    data = struct.pack(code,message_type,seq_number,user_id,message1_length,first_user_id,nbr_users,room_id)
-
-    return data;
-    
-
-
-    
-###########
-    
-    
 ###########  
-
+  
+def RESPONSE_NEW_MESSAGE(seq_number,user_id,status_code):
     
+    message_type = 0x0F;
+    message1_length = 1;
 
-###########
 
-    
-###########
+    code = '!BHBH' + 'B;
+    data = struct.pack(code,message_type,seq_number,user_id,message1_length,status_code);
 
-    
-###########
+    return data;
 
-    
-###########
 
-    
-###########
-
-    
-###########
-
-    
-###########
-
-    
 ###########
 
    
