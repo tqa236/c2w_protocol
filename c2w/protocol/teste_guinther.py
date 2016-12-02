@@ -8,26 +8,17 @@ import math
 #from . import c2w.main.client_model 
 
 ########### TESTE GET_PING 
-"""
-def GET_PING(seq_number,user_id,last_event_id,room_id):
-    
 
-    message_type = 0x04
+def GET_PING(seq_number, user_id, last_event, room_id):
+    
+    message_type = 4
     message_length = 4
     
-    last_event_id_temp = math.floor(last_event_id/256);
-    last_event_id0 = last_event_id - 256*last_event_id_temp;
-    last_event_id2 = math.floor(last_event_id_temp/256);
-    last_event_id1 = last_event_id_temp - 256*last_event_id2;
+    last_event_id1 = last_event//65536
+    last_event_id0 = last_event - last_event_id1*65536
     
-
-    print(str(last_event_id2))   
-    print(str(last_event_id1))  
-    print(str(last_event_id0))
-          
-    code = '!BHBH' + 'BBBB'
-    data = struct.pack(code,message_type,seq_number,user_id,message_length,last_event_id2,last_event_id1,last_event_id0,room_id)
-    print(str(data))
+    code = '!BHBH' + 'BHB'
+    data = struct.pack(code, message_type, seq_number, user_id, message_length, last_event_id1, last_event_id0, room_id)
     return data
 
 ###########
@@ -43,7 +34,6 @@ if messageHeader[0] == 4 : #Ping request dataType
     fieldsList.append([lastEventID, messageBody[2]])
     
 print(fieldsList)
-"""
 
 ########### TESTE GET_EVENTS
 """ 
@@ -151,12 +141,13 @@ if messageHeader[0] == 10 : #Users data request
 print(fieldsList)    
 """
 ########### RESPONSE_ROOMS
+"""
 def decodeRooms(entryNumber, datagram):
-    """
-    :param byte: the list part of the datagram to decode
+"""
+   #:param byte: the list part of the datagram to decode
     
-    Called by decode to take care of the list part of Room response packet
-    """
+   # Called by decode to take care of the list part of Room response packet
+"""
     #This function should :
     # - Unpack a Rooms response datagram
     
@@ -232,7 +223,7 @@ if messageHeader[0] == 9 : #Rooms data response
     nbrRooms = struct.unpack('!B', datagram[6:7])[0]
     fieldsList.append(decodeRooms(nbrRooms, datagram[7:]))
     
-    
+"""    
 
     
     
