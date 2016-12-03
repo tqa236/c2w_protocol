@@ -6,7 +6,8 @@ logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
 
 import time
-import c2w.main.constants.ROOM_IDS
+#import c2w.main.constants.ROOM_IDS
+import c2w.main.constants
 
 from . import unpacking
 from . import packing
@@ -98,7 +99,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
     def resend_packet(self):
     
-        if packet_awaited != 16 and packet_stored != 0 : #Check if there is a packet to be resent
+        if self.packet_awaited != 16 and self.packet_stored != 0 : #Check if there is a packet to be resent
             self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
             reactor.callLater(self.delay, self.resend_packet)              
 
@@ -288,8 +289,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             
             ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
-                       
-                if fieldsList[1][0] == 0 :
+                print('Hello world')
+                if fieldsList[1][0] == 0 :                    
                     moduleLogger.debug('Login status : Done')
                     self.userID = fieldsList[1][1]
                     self.lastEventID = fieldsList[1][2]
@@ -395,7 +396,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 moduleLogger.debug('Room status : Rooms list received')
                 for i in range(len(fieldsList[1])):
                     n += 1
-                    elif self.store.getMovieById(fieldsList[1][i][0]) == None :   
+                    if self.store.getMovieById(fieldsList[1][i][0]) == None :   
                         self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0], fieldsList[1][i][4])
                 
                 if n < self.entry_number_awaited and n !=0 :

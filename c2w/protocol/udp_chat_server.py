@@ -4,7 +4,9 @@ from c2w.main.lossy_transport import LossyTransport
 import logging
 from . import unpacking
 from . import packing
-import c2w.main.constants.ROOM_IDS
+#import c2w.main.constants.ROOM_IDS
+import c2w.main.constants
+
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
@@ -72,13 +74,31 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         
         fieldsList = unpacking.decode(datagram)
         
-        
+        i = 0
         ########### RESPONSE_USERS
         if fieldsList[0][0] == 0 :
             new_username = fieldsList[1][0]
             if self.serverProxy.getUserByName(new_username) != None :
-                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, last_event_ID[0], 4)
+                # Implement status code for response_login here 
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID[0], 0)
+                self.transport.write(packet, host_port)
             else :
                 user_id = self.serverProxy.addUser(new_username, c2w.main.constants.ROOM_IDS.MAIN_ROOM)
-                packet = RESPONSE_LOGIN.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, last_event_ID[0], 0)
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID[0], 0)
                 self.transport.write(packet, host_port)
+"""
+        elif fieldsList[0][0] == 2 :
+            pass
+        elif fieldsList[0][0] == 4 :
+            pass
+        elif fieldsList[0][0] == 6 :
+            pass
+        elif fieldsList[0][0] == 8 :
+            pass
+        elif fieldsList[0][0] == 10 :
+            pass
+        elif fieldsList[0][0] == 12 :
+            pass
+        elif fieldsList[0][0] == 14 :
+            pass
+"""

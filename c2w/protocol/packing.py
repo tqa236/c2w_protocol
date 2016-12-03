@@ -26,8 +26,7 @@ def RESPONSE_LOGIN(seq_number, user_id, username, last_event, status_code):
     server_id = 0
     message_length = 5
     last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = last_event - last_event_id1*math.pow(2,16)
-    
+    last_event_id0 = int(last_event - last_event_id1*math.pow(2,16))
     code = '!BHBH' + 'BBBH'
     data = struct.pack(code, message_type, seq_number, server_id, message_length, status_code, user_id, last_event_id1, last_event_id0)
     return data
@@ -233,7 +232,7 @@ def RESPONSE_NEW_MESSAGE(seq_number,user_id,status_code):
     message1_length = 1;
 
 
-    code = '!BHBH' + 'B;
+    code = '!BHBH' + 'B';
     data = struct.pack(code,message_type,seq_number,user_id,message1_length,status_code);
 
     return data;
