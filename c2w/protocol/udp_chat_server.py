@@ -50,7 +50,6 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         self.serverProxy = serverProxy
         self.lossPr = lossPr
 
-        #self.main_room = self.serverProxy
         
         self.events_list = {}
         self.last_event_ID = 0
@@ -135,13 +134,17 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         if fieldsList[0][0] == 0 :
             new_username = fieldsList[1][0]
             if self.serverProxy.getUserByName(new_username) != None :
-                # Implement status code for response_login here
-                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID, 0)
+                print(0)
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID, 4)
                 self.transport.write(packet, host_port)
+                print(2)
             else :
+                print(1)
                 user_id = self.serverProxy.addUser(new_username, c2w.main.constants.ROOM_IDS.MAIN_ROOM)
-                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID, 0)
+                print("user id",user_id)
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], user_id, new_username, self.last_event_ID, 0)
                 self.transport.write(packet, host_port)
+                print(3)
 """
         elif fieldsList[0][0] == 2 :
             pass

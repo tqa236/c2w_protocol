@@ -286,7 +286,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             self.packet_awaited = 16
             self.seq_number += 1
             
-            
+            print('Hello world1')
             ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
                 print('Hello world')
