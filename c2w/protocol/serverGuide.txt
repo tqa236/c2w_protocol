@@ -16,8 +16,8 @@
 #       Si on recevoir un paquet, on va vérifier dans la list/dictionary si on avait dejà tratés ce paquet
 #       Si on avait dejà tratés ce paquet, on ne va que reenvoyer le paquet existant en list/dictionary et changer rien du tout dans le code
 #           Cette méthode empêche de faire deux fois la même operation dans la base de données du serveur
-#           On va vérifier le paquet qui arrive pour le nùmero_id et pour le seq_number
-#           Faire une function pour vérifier si le paquet reçu (nùmero_id et pour le seq_number) est le dernière paquet envoyé
+#           On va vérifier le paquet qui arrive par le nùmero_id et pour le seq_number
+#          ##### Faire une function pour vérifier si le paquet reçu (nùmero_id,le seq_number) est le dernière paquet envoyé
 #               S'il est le paquet déjà envoyé: renvoie le paquet et retourne 1
 #               S'il n'est pas le dernière paquet envoyé: fait rien et retourne 0 
 #       On va ajouter une position de nùmero_id dans le instant que le usager bien fait un login_request
