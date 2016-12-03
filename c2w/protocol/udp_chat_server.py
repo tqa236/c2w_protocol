@@ -81,7 +81,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #   Si on arrive au fin de la list/dictionary on doit commencer par zero de nouveau
         #   On va écrire sur les anciennes contenue de les clés
         #       Paquets du type: NEW_MESSAGE, NEW_USER, SWITCH_ROOM et LOGOUT
-        "       faire une fonction pour ajouter le événement dans la bonne position, dans la bonne forme de packet, incrementer current_event
+        #       faire une fonction pour ajouter le événement dans la bonne position, dans la bonne forme de packet, incrementer current_event
         #       faire une fonction pour recueillir les événements de first_event to last_event de la liste
         pass
         
@@ -94,7 +94,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #   On va écrire sur les anciennes contenue de les clés
         #       Paquets du type: NEW_MESSAGE, NEW_USER, SWITCH_ROOM et LOGOUT
         #   faire une fonction pour ajouter le événement dans la bonne position, dans la bonne forme de packet, incrementer current_event
-        "       faire une fonction pour recueillir les événements de first_event to last_event de la liste
+        #       faire une fonction pour recueillir les événements de first_event to last_event de la liste
         pass
         
     def resendResponse(self,user_id,seq_number_user):
@@ -107,7 +107,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #       Si on avait dejà tratés ce paquet, on ne va que reenvoyer le paquet existant en list/dictionary et changer rien du tout dans le code
         #           Cette méthode empêche de faire deux fois la même operation dans la base de données du serveur
         #           On va vérifier le paquet qui arrive par le nùmero_id et pour le seq_number
-        "           Faire une function pour vérifier si le paquet reçu (nùmero_id,le seq_number) est le dernière paquet envoyé
+        #           Faire une function pour vérifier si le paquet reçu (nùmero_id,le seq_number) est le dernière paquet envoyé
         #               S'il est le paquet déjà envoyé: renvoie le paquet et retourne 1
         #               S'il n'est pas le dernière paquet envoyé: fait rien et retourne 0 
         #       On va ajouter une position de nùmero_id dans le instant que le usager bien fait un login_request
@@ -135,12 +135,12 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         if fieldsList[0][0] == 0 :
             new_username = fieldsList[1][0]
             if self.serverProxy.getUserByName(new_username) != None :
-                # Implement status code for response_login here 
-                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID[0], 0)
+                # Implement status code for response_login here
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID, 0)
                 self.transport.write(packet, host_port)
             else :
                 user_id = self.serverProxy.addUser(new_username, c2w.main.constants.ROOM_IDS.MAIN_ROOM)
-                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID[0], 0)
+                packet = packing.RESPONSE_LOGIN(fieldsList[0][1], 0, new_username, self.last_event_ID, 0)
                 self.transport.write(packet, host_port)
 """
         elif fieldsList[0][0] == 2 :
