@@ -103,15 +103,15 @@ def CODE_EVENT(event_type, event_id,room_id,user_id, message) :
     event_id0 = event_id - event_id1*65536  
       
     if event_type == 0x01 :
-        message_length = len(data)
+        message_length = len(message)
         code = 'HB' + 'BBBH' +  str(message_length) + 's'
         
         data = struct.pack(code, event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))   
         
     elif event_type == 0x02 :
-         username_length = len(user)
-         code = 'HB' + 'BBBB' + str(username_length) + 's'
-         data=struct.pack(code,event_id1, event_id0, event_type, room_id, user_id,data_length,message.encode('utf-8'))
+         message_length = len(message)
+         code = 'HB' + 'BBBB' + str(message_length) + 's'
+         data=struct.pack(code,event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))
        
     elif event_type == 0x03 :
          code = 'HB' + 'BBBB'
@@ -125,7 +125,7 @@ def CODE_EVENT(event_type, event_id,room_id,user_id, message) :
     
 ###########
     
-def RESPONSE_EVENTS_HEAD(seq_number, user_id, nbr_events,message_length)
+def RESPONSE_EVENTS_HEAD(seq_number, user_id, nbr_events,message_length) :
 
     message_type = 0x07
     message_length = message_length + 1   
@@ -234,7 +234,7 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
     list_length = 0;
 
     for user in users_list:
-        user_length = len(user.userName;
+        user_length = len(user.userName);
         list_length = list_length + 3 + user_length;
 
     message_length = list_length + 1;

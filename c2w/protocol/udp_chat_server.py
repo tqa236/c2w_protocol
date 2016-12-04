@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-import sys
 from twisted.internet.protocol import DatagramProtocol
-#from c2w.main.lossy_transport import LossyTransport
+from c2w.main.lossy_transport import LossyTransport
+
 import logging
 from . import unpacking
 from . import packing
-import c2w.main.constants.ROOM_IDS
+import c2w.main.constants
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
@@ -56,7 +56,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #self.main_room = self.serverProxy
         
         self.events_list = {}
-        self.last_event_ID = 0
+        self.last_event_ID = -1
         self.seq_number_users = {}    
         
     
@@ -97,11 +97,13 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
             event_id = 0
         else :                                                          # Sinon on incremente
             event_id =  self.last_event_ID + 1
-            
-        coded_event = CODE_EVENT(event_type, event_id,room_id,user_id, content)   # code le event
+           
+        coded_event = packing.CODE_EVENT(event_type, event_id, room_id, user_id, content)   # code le event
         self.events_list[event_id] = coded_event                                  # on enregistre le event sur le bon champ
         
-        self.last_event_ID = event_id                                             # On incremente self.last_event_ID 
+        self.last_event_ID = event_id                                             # On incremente self.last_event_ID
+        
+        print(coded_event) 
     
 ###########
               
@@ -162,18 +164,18 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #               S'il n'y a pas le username, donc on est libre pour enrégistrer le login retourn = false
         
         if message_type == 0x00 or message_type == 0x02 :           # Pas encore implementé pour login et logout 
-            packet = None                                           # Dans les cas au dessus, 'resendResponse' est transparent
+            packet = 0                                           # Dans les cas au dessus, 'resendResponse' est transparent
         else :
             if seq_number == self.seq_number_users[user_id][0] :    # On vérifie si le seq_number reçu est equal le dernière seq_number envoyé
                 packet = self.seq_number_users[user_id][1]          # On prend le dernière packet
             else :
-                packet = None                                       # Si le packet n'est pas le dernière packet reçu, réponse = FALSE
+                packet = 0                                       # Si le packet n'est pas le dernière packet reçu, réponse = FALSE
         
         return packet
     
 ###########
          
-    def loginRules(self,username):
+    def loginRules(self, username):
         # Cette function limite les caractères, la taille et la forme d'username
         # return TRUE si le username est bon
         # return FALSE si le username n'est pas bon
@@ -260,48 +262,53 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         user_id = fieldsList[0][2]
         
         # Je crois qu'on ne peut pas utiliser resendResponse dans login/logout
-        if resendResponse(user_id,seq_number, message_type) :              # Le client a déjà reçu ce message   
-            packet = resendResponse(user_id,seq_number, message_type)      # On prend le paquet déjà envoyé
+        # Je crois qu'on ne peut pas utiliser resendResponse dans login/logout
+        """
+        if self.resendResponse(user_id,seq_number, message_type) == 0 :              # Le client a déjà reçu ce message   
+            packet = self.resendResponse(user_id,seq_number, message_type)      # On prend le paquet déjà envoyé
             self.transport.write(packet, host_port)                        # On envoie le paquet de nouveau                       
-        else :     
-            ########### LOGIN REQUEST / RESPONSE_LOGIN
-            if message_type == 0x00 :                                      # On a reçu le message de login
-                new_username = fieldsList[1][0]
-                                
-                if self.loginRules(new_username) :                         # Il faut passer par les régles du serveur 
-                    if  self.serverProxy.userExists(new_username) :        # Il y a déjà quelqu'un avec le même username
-                        packet = packing.RESPONSE_LOGIN(0, 0, 0, 0x04)     # faire le paquet    
-                                                                   
-                    elif len(self.serverProxy.getUserList() > 255) :       # Le système est plain d'usagers
-                        packet = packing.RESPONSE_LOGIN(0, 0, 0, 0x02)     # faire le paquet 
-                        
-                    elif not self.serverProxy.userExists(new_username) :   # Il n'y a personne avec le même username
-                        user_id_login = self.serverProxy.addUser(new_username, c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
-                        self.addEvent(0x02, user_id_login, new_username)               # On ajoute le login à les événements
-                        
-                        self.seq_number_users[user_id_login] = [0,packet]              # On va créer une position pour le user seq_number
-                        packet = packing.RESPONSE_LOGIN(0, 0, self.last_event_ID,0x00) # faire le paquet
+        else :
+        """   
+        ########### LOGIN REQUEST / RESPONSE_LOGIN
+        if message_type == 0x00 :                                                                      # On a reçu le message de login
+            new_username = fieldsList[1][0]
+                            
+            if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur
+                print(" /n Ok 1")  
+                if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
+                    packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet    
+                                                               
+                elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plain d'usagers
+                    packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
                     
-                    else :                                                  # On ne sait pas ce que se passe
-                        packet = packing.RESPONSE_LOGIN(0, 0, 0, 0x01)      # faire le paquet 
+                elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
+                    user_id_login = self.serverProxy.addUser(new_username, 1)# c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
+                    self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
+                    
+                    packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
+                    self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
+                else :                                                                                  # On ne sait pas ce que se passe
+                    packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x01)      # faire le paquet 
                                              
-            else :                                                          # Le username ne passe pas pour les lois du serveur
-                packet = packing.RESPONSE_LOGIN(0, 0, 0, 0x03)              # faire le paquet 
+            else :
+                print("Ok 2")                                                                                       # Le username ne passe pas pour les lois du serveur
+                packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x03)          # faire le paquet
             
-            self.transport.write(packet, host_port)                         # On envoie le paquet
+            self.transport.write(packet, host_port)                                                     # On envoie le paquet
                     
-            ###########        
-            
+        ###########        
+        
+        if user_id in self.seq_number_users :                                                       # On vérifie si le clé existe dans le dictionary                 
             if seq_number == self.seq_number_users[user_id][0] + 1 :                                # Authentification par la bonne clé seq_number~user_id
-            
+        
             ########### LOGOUT REQUEST / RESPONSE_LOGOUT
                 if message_type == 0x02 :                                                           # On a reçu le message de logout
                     if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # On vérifie si il y a le user sur la base de données                        
-                        self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user  """" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
+                        self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user  "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
                         self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements                
                         serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
                         packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)                   # On fait le paquet 
-                        self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet """" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
+                        self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
                         self.transport.write(packet, host_port)
                         
                     else :                                                                          # Si on a déjà supprimés le user de la base de données
@@ -418,11 +425,11 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     self.transport.write(packet, host_port)                                       # On envoie le paquet
                         
             ###########                       
-                                                  
+                                              
 
-                                        
-                        
-                        
-                        
-                        
+                                    
+                    
+                    
+                    
+                    
                     

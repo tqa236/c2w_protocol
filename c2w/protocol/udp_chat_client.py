@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-*
 from twisted.internet.protocol import DatagramProtocol
+import c2w
 from c2w.main.lossy_transport import LossyTransport
 import logging
 logging.basicConfig()
