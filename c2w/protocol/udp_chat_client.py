@@ -6,7 +6,6 @@ logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
 
 import time
-#import c2w.main.constants.ROOM_IDS
 import c2w.main.constants
 
 from . import unpacking
@@ -80,6 +79,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         self.delay = 0.5 #The length of the timer that is armed whenever the client send a request. When it runs out the client resend the message if no answer was given.
         self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
+        self.resendTries = 0 #The number of times the resend function has resent the message
         
         
     def startProtocol(self):
@@ -96,16 +96,22 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
 
 ########### The function that resends packets whenever the timer runs out.
-
-    def resend_packet(self):
+    #ApplicationQuit is buggy, but the rest works
+    def resend_packet(self, seq_number):
     
-        if self.packet_awaited != 16 and self.packet_stored != 0 : #Check if there is a packet to be resent
-            self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
-            reactor.callLater(self.delay, self.resend_packet)              
+        if self.packet_awaited != 16 and self.packet_stored != 0 and self.seq_number == seq_number: #Check if there is a packet to be resent
+            if self.resendTries < 10 :
+                print(self.packet_stored)
+                self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
+                self.resendTries += 1
+                reactor.callLater(self.delay, self.resend_packet, seq_number)
+            else :
+                self.clientProxy.applicationQuit()
+                              
 
 
 ########### PUT_LOGIN  
-   
+    #OK
     def sendLoginRequestOIE(self, userName):
         """
         :param string userName: The user name that the user has typed.
@@ -115,17 +121,35 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
                
         moduleLogger.debug('loginRequest called with username=%s', userName)
-        packet = packing.PUT_LOGIN(self.seq_number,userName)        
-              
+        packet = packing.PUT_LOGIN(self.seq_number,userName)    
+        
+        #Interface de test
+        self.seq_number = 201
+        self.userID = 102
+        self.lastEventID = 152
+        self.userRoomID = 3
+        nbr_users = 5
+        first_user_id = 0
+        packet = packing.GET_USERS(self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)
+        
+        print(packet)
+        
+        data = unpacking.decode(packet)
+        
+        print(data)
+        
+        
+        
+        
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
         self.packet_awaited = 2
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
 ########### PUT_NEW_MESSAGE    
-   
+    #OK
     def sendChatMessageOIE(self, message):
         """
         :param message: The text of the chat message.
@@ -143,16 +167,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         
         moduleLogger.debug('Message request called with content=%s', message)
-        packet = packing.PUT_NEW_MESSAGE = (self.seq_number,self.userID,self.userRoomID,message)      
+        packet = packing.PUT_NEW_MESSAGE(self.seq_number,self.userID,self.userRoomID,message)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
         self.packet_awaited = 15
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_SWITCH_ROOM     
-   
+    #OK
     def sendJoinRoomRequestOIE(self, roomName):
         """
         :param roomName: The room name (or movie title.)
@@ -170,16 +194,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('Join Room request called with room name = %s', roomName)
         
         self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
-        packet = packing.PUT_SWITCH_ROOM = (self.seq_number, self.userID, self.futureRoomID)      
+        packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
         self.packet_awaited = 13
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_LOGOUT     
-   
+    #OK
     def sendLeaveSystemRequestOIE(self):
         """
         Called by the client proxy  when the user
@@ -188,16 +212,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         moduleLogger.debug('Leave system request called')
         
-        packet = packing.PUT_LOGOUT = (self.seq_number,self.userID)      
+        packet = packing.PUT_LOGOUT(self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
         self.packet_awaited = 3
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### GET_PING     
-   
+    #OK
     def sendGetPingRequestOIE(self):
         """
         This function is used by the chatClientProtocol to get ping from the server
@@ -205,16 +229,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         moduleLogger.debug('Get ping request called')
         
-        packet = packing.GET_PING = GET_PING(self.seq_number,self.user_ID,self.lastEventID,self.userRoomID)      
+        packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
         self.packet_awaited = 5
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### GET_EVENTS     
-   
+    #OK
     def sendGetEventsRequestOIE(self,nbr_events):
         """
         This function is used by the chatClientProtocol when a ping from the server has revealed that the client is not synchronized yet
@@ -223,16 +247,16 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('Get events request called')
         
         self.entry_number_awaited = nbre_events
-        packet = packing.GET_EVENTS = (self.seq_number, self.userID, self.lastEventID, nbr_events, self.userRoomID)
+        packet = packing.GET_EVENTS(self.seq_number, self.userID, self.lastEventID, nbr_events, 0)
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
         self.packet_awaited = 7
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
-########### GET_ROOMS     
-   
+########### GET_ROOMS   
+    #OK
     def sendGetRoomsRequestOIE(self,first_room_id, nbr_rooms):
         """
         This fuction is used by the chatClientProtocol to get a list of current rooms
@@ -241,15 +265,15 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('Get rooms request called')
         
         self.entry_number_awaited = nbr_rooms
-        packet = packing.GET_ROOMS = (self.seq_number, self.userID, first_room_id, nbr_rooms)      
+        packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
         self.packet_awaited = 9
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
-########### GET_USERS     
-   
+########### GET_USERS    
+    #OK
     def sendGetUsersRequestOIE(self,first_user_id, nbr_users):
         """
         This function is used by the chatClientProtocol to get a list of current users
@@ -258,12 +282,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('Get users request called')
         
         self.entry_number_awaited = nbr_users
-        packet = packing.GET_USERS = (self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
+        packet = packing.GET_USERS(self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
         self.packet_stored = packet
         self.packet_awaited = 11
-        reactor.callLater(self.delay, self.resend_packet)
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
                 
 
 ###########      
@@ -284,9 +308,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             #Check if the message received is the one that is awaited (type and sequence number check)
             self.packet_stored = 0
             self.packet_awaited = 16
+            self.resendTries = 0
             self.seq_number += 1
             
-            print('Hello world1')
+            moduleLogger.debug('Expected response received, decoding...')
             ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
                 print('Hello world')

@@ -19,7 +19,7 @@ def decode(datagram):
     if messageHeader[0] == 0 :
         UL = struct.unpack('B', datagram[6:7])
         Username = struct.unpack('!' + str(UL[0]) + 's', datagram[7:])
-        fieldsList.append(Username[0].decode('utf-8'))
+        fieldsList.append([Username[0].decode('utf-8')])
     
     #RESPONSE_LOGIN    
     elif messageHeader[0] == 1 :
@@ -39,13 +39,13 @@ def decode(datagram):
     #GET_PING
     elif messageHeader[0] == 4 :
         messageBody = struct.unpack('!BHB', datagram[6:])
-        lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+        lastEventID = messageBody[0]*65536 + messageBody[1]
         fieldsList.append([lastEventID, messageBody[2]])
     
     #RESPONSE_PING
     elif messageHeader[0] == 5 :
         messageBody = struct.unpack('!BH', datagram[6:])
-        lastEventID = messageBody[0]*math.pow(2,16) + messageBody[1]
+        lastEventID = messageBody[0]*65536 + messageBody[1]
         fieldsList.append([lastEventID])
     
     #GET_EVENTS
@@ -91,8 +91,8 @@ def decode(datagram):
     
     #PUT_NEW_MESSAGE
     elif messageHeader[0] == 14 :
-        messageBody = struct.unpack('!BH', datagram[6:10])
-        messageBody += struct.unpack('!'+str(messageBody[1])+'s', datagram[10:])
+        messageBody = struct.unpack('!BH', datagram[6:9])
+        messageBody += struct.unpack('!'+str(messageBody[1])+'s', datagram[9:])
         fieldsList.append([messageBody[0], messageBody[2].decode('utf-8')])
     
     #RESPONSE_NEW_MESSAGE
@@ -134,7 +134,7 @@ def decodeRooms(entryNumber, datagram):
     for i in range(entryNumber) : #Room (room_id, IP, Port, name_length, room_name, nbr_users)
         information = struct.unpack('!BBBBBHB', datagram[:8])
         ipAdress = misc.decodeIpAdress(information[1], information[2], information[3], information[4])
-        room_content = struct.unpack('!'+str(information[6])+'s'+'B') #Moi(Güinther), j'ai ajouté +'s'
+        room_content = struct.unpack('!'+str(information[6])+'s'+'B')
         resultList.append([information[0], ipAdress, information[5], room_content[0].decode('utf-8'), room_content[1]]) #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users
         datagram = datagram[(9+information[3]):]
     return resultList;
@@ -153,7 +153,7 @@ def decodeEvents(entryNumber, datagram):
     resultList = []
     for i in range(entryNumber) :
         eventHeader = struct.unpack('!BHB', datagram[:4])
-        eventId = eventHeader[0]*math.pow(2,16) + eventHeader[1]
+        eventId = eventHeader[0]*65536 + eventHeader[1]
         eventType = eventHeader[2]
         if eventType == 1 : #Message event (room_id, user_id, message_length, message)
             information = struct.unpack('!BBH', datagram[4:8])
