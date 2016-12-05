@@ -352,7 +352,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 lastServerEventID = fieldsList[1][0]
                 if self.lastEventID != lastServerEventID :
                     print('Ping status : Not up-to-date, getting events required')
-                    self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                    self.sendGetEventsRequestOIE(lastServerEventID - self.lastEventID)
                     
                 else :
                     print('Ping status : up-to-date, preparing next ping')

@@ -57,7 +57,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #self.main_room = self.serverProxy
         
         self.events_list = {}
-        self.last_event_ID = -1
+        self.last_event_ID = 0
         self.seq_number_users = {}    
         
         self.delay_to_disconnect = 60       #
@@ -299,9 +299,9 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     print(2)
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
                     user_id_login = self.serverProxy.addUser(new_username, ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
-                    self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
                     
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
+                    self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
                     print(0)
                 else :                                                                                  # On ne sait pas ce que se passe
