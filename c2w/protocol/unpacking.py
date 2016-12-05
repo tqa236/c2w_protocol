@@ -17,7 +17,7 @@ def decode(datagram):
     
     #PUT_LOGIN
     if messageHeader[0] == 0 :
-        UL = struct.unpack('B', datagram[6:7])
+        UL = struct.unpack('!B', datagram[6:7])
         Username = struct.unpack('!' + str(UL[0]) + 's', datagram[7:])
         fieldsList.append([Username[0].decode('utf-8')])
     

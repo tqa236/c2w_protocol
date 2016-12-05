@@ -7,7 +7,7 @@ logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
 
 import time
-import c2w.main.constants
+from c2w.main.constants import ROOM_IDS
 
 from . import unpacking
 from . import packing
@@ -93,11 +93,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
-        self.store.addMovie(c2w.main.constants.ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
+        self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
 
 
 ########### The function that resends packets whenever the timer runs out.
-    #ApplicationQuit is buggy, but the rest works
+    #OK
     def resend_packet(self, seq_number):
         if self.packet_awaited != 16 and self.packet_stored != 0 and self.seq_number == seq_number: #Check if there is a packet to be resent
             if self.resendTries < 10 :
@@ -105,8 +105,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
                 self.resendTries += 1
                 reactor.callLater(self.delay, self.resend_packet, seq_number)
-            #else :
-                #self.clientProxy.applicationQuit()
                               
 
 
@@ -312,7 +310,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             self.seq_number += 1
             
             moduleLogger.debug('Expected response received, decoding...')
-            ########### RESPONSE_LOGIN
+            ########### RESPONSE_LOGIN OK
             if fieldsList[0][0] == 1 :          
                 print('Hello world')
                 if fieldsList[1][0] == 0 :                    
@@ -378,12 +376,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         
                         room = self.store.getMovieByID(fieldsList[1][i][2]).movieTitle
                         self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room)
-                        
-                        userList = store.getUserList() #get the user list in the appropriate format
-                        for i in range(len(userList)) :
-                            room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
-                            userList[i] = (userList[i].userName, room)
-                        self.clientProxy.setUserListONE(userList)
+                        self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room)
                         moduleLogger.debug('GetEvents status : New user')
                         
                     elif fieldsList[1][i][1] == 3 : #Switch room event
@@ -400,7 +393,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         
                         name = self.store.getUserByID(fieldsList[1][i][3]).userName
                         self.store.removeUser(name)
-                        self.clientProxy.userUpdateReceivedONE(name, c2w.main.constants.ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
+                        self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
                         moduleLogger.debug('GetEvent status : User logged out')
                         
                 if n < self.entry_number_awaited and n !=0 :
