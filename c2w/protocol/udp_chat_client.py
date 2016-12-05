@@ -84,12 +84,12 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         
     def startProtocol(self):
-        """
+        """one_user_full_login_udp_server_test
         DO NOT MODIFY THE FIRST TWO LINES OF THIS METHOD!!
 
         If in doubt, do not add anything to this method.  Just ignore it.
         It is used to randomly drop outgoing packets if the -l
-        command line option is used.
+        command line option is used.packet_stor
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
@@ -99,7 +99,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 ########### The function that resends packets whenever the timer runs out.
     #ApplicationQuit is buggy, but the rest works
     def resend_packet(self, seq_number):
-    
         if self.packet_awaited != 16 and self.packet_stored != 0 and self.seq_number == seq_number: #Check if there is a packet to be resent
             if self.resendTries < 10 :
                 print(self.packet_stored)
@@ -144,9 +143,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.packet_stored = packet
-        self.packet_awaited = 2
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 2
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
 ########### PUT_NEW_MESSAGE    
@@ -171,9 +170,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_NEW_MESSAGE(self.seq_number,self.userID,self.userRoomID,message)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.packet_stored = packet
-        self.packet_awaited = 15
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 15
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_SWITCH_ROOM     
@@ -198,9 +197,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
-        self.packet_stored = packet
-        self.packet_awaited = 13
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 13
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_LOGOUT     
@@ -216,9 +215,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_LOGOUT(self.seq_number,self.userID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 3
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 3
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### GET_PING     
@@ -233,9 +232,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 5
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 5
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### GET_EVENTS     
@@ -251,9 +250,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_EVENTS(self.seq_number, self.userID, self.lastEventID, nbr_events, 0)
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 7
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 7
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
 ########### GET_ROOMS   
@@ -269,9 +268,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 9
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 9
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 ########### GET_USERS    
     #OK
@@ -286,9 +285,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_USERS(self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
         self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 11
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        #self.packet_stored = packet
+        #self.packet_awaited = 11
+        #reactor.callLater(self.delay, self.resend_packet, self.seq_number)
                 
 
 ###########      
