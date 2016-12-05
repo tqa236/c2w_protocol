@@ -35,12 +35,9 @@ def decodeRooms(entryNumber, datagram):
     # - Unpack a Rooms response datagram
     resultList = []
     for i in range(entryNumber) : #Room (room_id, IP, Port, name_length, room_name, nbr_users)
-        print(datagram[:8])
         information = struct.unpack('!BBBBBHB', datagram[:8])
         ipAdress = decodeIpAdress(information[1], information[2], information[3], information[4])
-        print(datagram[8:8 + information[6] + 1])
         room_content = struct.unpack('!'+str(information[6])+'s'+'B',datagram[8:8 + information[6] + 1])
-        print("##########################################################################" + str(information[6] + 1))
         resultList.append([information[0], ipAdress, information[5], room_content[0].decode('utf-8'), room_content[1]]) #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users
         datagram = datagram[(9+information[6]):]
     return resultList;
