@@ -2,6 +2,19 @@
 from twisted.internet.protocol import Protocol
 import logging
 
+import c2w
+from c2w.main.lossy_transport import LossyTransport
+
+import time
+import c2w.main.constants
+
+from . import unpacking
+from . import packing
+import struct
+import math
+from . import misc
+from twisted.internet import reactor
+from c2w.main.client_model import c2wClientModel
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.tcp_chat_server_protocol')
 
@@ -60,6 +73,107 @@ class c2wTcpChatServerProtocol(Protocol):
         #: The serverProxy, which the protocol must use
         #: to interact with the user and movie store in the server.
         self.serverProxy = serverProxy
+        self.buffer = bytearray(0) # Only save the incomplete part of a message
+        
+        self.events_list = {}
+        self.last_event_ID = -1
+        self.seq_number_users = {}   
+
+    def loginRules(self, username):
+        # Cette function limite les caractères, la taille et la forme d'username
+        # return TRUE si le username est bon
+        # return FALSE si le username n'est pas bon
+        return 1
+
+    def getRooms(self, first_room_id, nbr_rooms):   ######################################################## Il faut commenter
+    
+        movie_list = self.serverProxy.getMovieList()
+        users_list = self.serverProxy.getUserList()
+        
+        i = 0
+        movie_id_selected = []
+        for movie in movie_list :
+            if movie.movieId >= first_room_id :
+                movie_id_selected.append(movie.movieId)
+                i = i + 1
+                
+        movie_id_sorted_list = sorted(movie_id_selected, key=int)
+        print('haha')        
+        print(len(movie_id_sorted_list))
+        if nbr_rooms > len(movie_id_sorted_list) :
+            movie_id_sorted_list = movie_id_sorted_list[0:nbr_rooms]
+        else :
+            movie_id_sorted_list = movie_id_sorted_list[0:len(movie_id_sorted_list)]    
+        
+        movie_list_to_response_rooms = []
+        n_users_room = [] # il faut faire un vecteur de zeros
+        
+        for i in range(len(movie_id_sorted_list)) :
+            movie_list_to_response_rooms[i] = self.serverProxy.getMovieById(movie_id_sorted_list[i])
+            for users in users_list :
+                if users.userChatRoom == movie_id_sorted_list[i] :
+                    n_users_room[i] = n_users_room[i] + 1     
+                    
+        return [movie_list_to_response_rooms, n_users_room]
+
+    def addEvent(self, event_type, user_id, content):
+        # Je dois créer une dictionary avec tous les events
+        # Je dois créer une variable current_event
+        # La clés sera le event_number et le contenu sera le paquet, déjà dans la forme binaire pour ajouter dans la réponse RESPONSE_EVENTS
+        # Les clés sont numérotés de 0 (/0x00/0x00/0x00) à 16777215 (/0xff/0xff/0xff)
+        # Si on arrive au fin de la dictionary on doit commencer par zero de nouveau
+        # On va écrire sur les anciennes contenue de les clés
+        # Paquets du type: NEW_MESSAGE, NEW_USER, SWITCH_ROOM et LOGOUT
+        # faire une fonction pour ajouter le événement dans la bonne position, dans la bonne forme de packet, incrementer current_event
+        # faire une fonction pour recueillir les événements de first_event to last_event de la liste
+
+        # event_type = 0x01 # MESSAGE # content = message(String)
+        # event_type = 0x02 # NEW_USER # content = username(String)
+        # event_type = 0x03 # SWITCH_ROOM # content = new_room_id
+        # event_type = 0x04 # LOGOUT # content = None
+                
+        room_id = self.serverProxy.getUserById(user_id).userChatRoom    # On récupere le room_id du usager
+        
+        if self.last_event_ID == 16777215 :                             # Si on arrive à la fin, on retourne au débout
+            event_id = 0
+        else :                                                          # Sinon on incremente
+            event_id =  self.last_event_ID + 1
+           
+        coded_event = packing.CODE_EVENT(event_type, event_id, room_id, user_id, content)   # code le event
+        self.events_list[event_id] = coded_event                                  # on enregistre le event sur le bon champ
+        
+        self.last_event_ID = event_id                                             # On incremente self.last_event_ID
+        
+        print(coded_event) 
+
+    def getUsers(self, first_user_id, nbr_users, room_id):
+        # l'entrées : le ID du première usager que le client a demandé,
+        # le nombre de de usagers et le room où on va chercher
+        
+        # le résultat : une liste de la classe c2wUser avec le nombre d'usagers demandé dans la bonne salle
+        
+        users_list = self.serverProxy.getUserList()                                  # On trouve tous les usagers
+        
+        # i = 0
+        user_id_selected = []
+        for user in users_list :                                                     # On prend les usagers dans la bonne movie room
+            if user.userChatRoom == room_id and user.userId >= first_user_id :
+                user_id_selected.append(user.userId)                                    # On prend le id de tous les usagers sélectionnés
+        # i = i + 1
+                
+        user_id_sorted_list = sorted(user_id_selected, key=int)                      # On ordenne le ID des usagers
+        
+        if nbr_users > len(user_id_sorted_list) :
+            user_id_sorted_list = user_id_sorted_list[0:nbr_users]                   # On ne prend que le nombre demandé
+        else :
+            user_id_sorted_list = user_id_sorted_list[0:len(user_id_sorted_list)]    # On prend le maximum possible
+        
+        user_list_to_response_users = []                                             # liste vide pour garder le résultat
+        
+        for i in range(len(user_id_sorted_list)) :
+            user_list_to_response_users.append(self.serverProxy.getUserById(user_id_sorted_list[i])) # On prend les objets de la classe c2wUser
+                    
+        return user_list_to_response_users
 
     def dataReceived(self, data):
         """
@@ -69,4 +183,69 @@ class c2wTcpChatServerProtocol(Protocol):
         Twisted calls this method whenever new data is received on this
         connection.
         """
-        pass
+        self.buffer = self.buffer + data
+        if len(self.buffer) >= 6:
+            header = self.buffer[:6]
+            messageInfo = struct.unpack('!BHBH',header)
+            messageLength = messageInfo[3] + 6
+            if messageLength <= len(self.buffer):
+                datagram = self.buffer[:messageLength] # the entire message
+                print(datagram)
+                fieldsList = unpacking.decode(datagram)
+                print(fieldsList)
+                self.buffer = self.buffer[messageLength:] # the rest of the message
+                
+                message_type = fieldsList[0][0]
+                seq_number = fieldsList[0][1]
+                user_id = fieldsList[0][2]
+                
+                ########### LOGIN REQUEST / RESPONSE_LOGIN
+                if message_type == 0x00 :                                                                      # On a reçu le message de login
+                    new_username = fieldsList[1][0]
+                                    
+                    if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur
+                        if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
+                            packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet                                              
+                        elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plein d'usagers
+                            packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
+                        elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
+                            user_id_login = self.serverProxy.addUser(new_username, 1)# c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
+                            self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
+                            packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
+                            self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
+                        else :                                                                                  # On ne sait pas ce que se passe
+                            packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x01)      # faire le paquet                                 
+                    else :                                                                                      # Le username ne passe pas pour les lois du serveur
+                        packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x03)          # faire le paquet
+                    
+                    self.transport.write(packet)     
+
+            ########### ROOMS REQUEST / RESPONSE_ROOMS
+                if message_type == 0x08 :                                                               # On a reçu le message de get_rooms
+                    first_room_id = fieldsList[1][0]                                                    # La première movie room que on va envoyer
+                    nbr_rooms = fieldsList[1][1]                                                        # Le nombre de movie room que on va envoyer
+                    
+                    movie_list = self.getRooms(first_room_id, nbr_rooms)[0]                                  # Une liste avec les classes c2wMovie qu'on va envoyer
+                    n_users_room_list = getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
+                    
+                    
+                    packet = packing.RESPONSE_ROOMS(seq_number, user_id, movie_list, n_users_room_list) # On fait le paquet
+                    
+                    self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1           # On incrémente le seq_number du user
+                    self.seq_number_users[user_id][1] = packet                                          # On enregistre le paquet
+                    self.transport.write(packet)                                                        # On envoie le paquet  
+
+
+            ########### USERS REQUEST / RESPONSE_USERS
+                if message_type == 0x0A :                                                      # On a reçu le message de get_users
+                    first_user_id = fieldsList[1][0]                                           # Le première user que on va envoyer
+                    nbr_users = fieldsList[1][1]                                               # Le nombre de users que on va envoyer
+                    
+                    user_list = self.getUsers(first_user_id, nbr_users, self.serverProxy.getUserById(user_id).userChatRoom)                             
+                    # Une liste avec les classes c2wUser qu'on va envoyer
+                    
+                    packet = packing.RESPONSE_USERS(seq_number, user_id, user_list)            # On fait le paquet
+                    
+                    self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1  # On incrémente le seq_number du user
+                    self.seq_number_users[user_id][1] = packet                                 # On enregistre le paquet
+                    self.transport.write(packet)                                               # On envoie le paquet        
