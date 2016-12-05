@@ -142,7 +142,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
-        self.packet_awaited = 2
+        self.packet_awaited = 1
         reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
@@ -301,9 +301,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
 
         fieldsList = unpacking.decode(datagram)
+        print(fieldsList)
         
         if fieldsList[0][0] == self.packet_awaited and fieldsList[0][1] == self.seq_number :
             #Check if the message received is the one that is awaited (type and sequence number check)
+            print('hi')
             self.packet_stored = 0
             self.packet_awaited = 16
             self.resendTries = 0

@@ -282,7 +282,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
                     print(2)
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
-                    user_id_login = self.serverProxy.addUser(new_username, 1)# c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
+                    user_id_login = self.serverProxy.addUser(new_username, 1)#c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
                     
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
@@ -372,7 +372,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     first_user_id = fieldsList[1][0]                                           # Le première user que on va envoyer
                     nbr_users = fieldsList[1][1]                                               # Le nombre de users que on va envoyer
                     
-                    user_list = getUsers(first_room_id, nbr_rooms)                             # Une liste avec les classes c2wUser qu'on va envoyer
+                    user_list = self.getUsers(first_user_id, nbr_users, self.serverProxy.getUserById(user_id).userChatRoom)                             
+                    # Une liste avec les classes c2wUser qu'on va envoyer
                     
                     packet = packing.RESPONSE_USERS(seq_number, user_id, user_list)            # On fait le paquet
                     
