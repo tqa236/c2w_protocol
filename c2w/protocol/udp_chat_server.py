@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 from twisted.internet.protocol import DatagramProtocol
 from c2w.main.lossy_transport import LossyTransport
+from twisted.internet import reactor
 
 import logging
 from . import unpacking
 from . import packing
 import c2w.main.constants
+from c2w.main.constants import ROOM_IDS
 
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
@@ -13,7 +15,6 @@ moduleLogger = logging.getLogger('c2w.protocol.udp_chat_server_protocol')
 
 class c2wUdpChatServerProtocol(DatagramProtocol):
 
-    # Il faut deconnecter le usager après 60s sans recevoir des messages de lui.
     # Il faut commencer le videoStreaming aprés avoir changé de salle.
     
 
@@ -56,8 +57,10 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #self.main_room = self.serverProxy
         
         self.events_list = {}
-        self.last_event_ID = -1
+        self.last_event_ID = 0
         self.seq_number_users = {}    
+        
+        self.delay_to_disconnect = 60       #
         
     
 ###########
@@ -92,6 +95,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         # event_type = 0x04 # LOGOUT # content = None
                 
         room_id = self.serverProxy.getUserById(user_id).userChatRoom    # On récupere le room_id du usager
+        if room_id == c2w.main.constants.ROOM_IDS.MAIN_ROOM :        # Si nous sommes dans la MAIN ROOM
+            room_id = 0                                             # On change c2w.main.constants.ROOM_IDS.MAIN_ROOM par 0 (entière)
         
         if self.last_event_ID == 16777215 :                             # Si on arrive à la fin, on retourne au débout
             event_id = 0
@@ -210,10 +215,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
             n_users_room.append(0)
             for users in users_list :
                 if users.userChatRoom == movie_id_sorted_list[i] :
-                    n_users_room[i] = n_users_room[i] + 1
-                    
-                    
-        print(str(len(movie_list_to_response_rooms))+ "," + str(len(n_users_room)))                  
+                    n_users_room[i] = n_users_room[i] + 1                 
                     
         return [movie_list_to_response_rooms, n_users_room]
         
@@ -247,7 +249,18 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
             user_list_to_response_users.append(self.serverProxy.getUserById(user_id_sorted_list[i])) # On prend les objets de la classe c2wUser
                     
         return user_list_to_response_users
+        
+###########
+    """
+    def checkConnectiontUser(self, user_id, seq_number):
     
+    if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :        
+        if seq_number == self.seq_number_users[user_id][0] :
+            self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements           
+            serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+        else :
+            reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id, self.seq_number_users[user_id][0])
+    """          
 ###########
        
     def datagramReceived(self, datagram, host_port):
@@ -277,8 +290,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         if message_type == 0x00 :                                                                      # On a reçu le message de login
             new_username = fieldsList[1][0]
                             
-            if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur
-                print(" /n Ok 1")  
+            if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur 
                 if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet    
                     print(4)                                           
@@ -286,10 +298,10 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
                     print(2)
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
-                    user_id_login = self.serverProxy.addUser(new_username, 1)#c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
-                    self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
+                    user_id_login = self.serverProxy.addUser(new_username, ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
+                    self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
                     print(0)
                 else :                                                                                  # On ne sait pas ce que se passe
@@ -326,18 +338,11 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
             
             ########### PING REQUEST / RESPONSE_PING
                 if message_type == 0x04 :                                                       # On a reçu le message de get_ping
-                    packet = packing.RESPONSE_LOGOUT(seq_number, user_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
+                    packet = packing.RESPONSE_PING(seq_number, user_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
                     self.transport.write(packet, host_port)      
             
-            ########### PING REQUEST / RESPONSE_PING
-                if message_type == 0x04 :                                                       # On a reçu le message de get_ping
-                    packet = packing.RESPONSE_LOGOUT(seq_number, user_id, self.last_event_ID)
-                    self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
-                    self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
-                    self.transport.write(packet, host_port)
-                    
             ########### EVENTS REQUEST / RESPONSE_EVENTS
                 if message_type == 0x06 :                                                       # On a reçu le message de get_events
                     last_event_id = fieldsList[1][0]                                            # Le premier event que le usager demande

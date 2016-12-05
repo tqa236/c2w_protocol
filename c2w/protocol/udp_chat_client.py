@@ -351,11 +351,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 print('ping resp rec')
                 lastServerEventID = fieldsList[1][0]
                 if self.lastEventID != lastServerEventID :
-                    moduleLogger.debug('Ping status : Not up-to-date, getting events required')
-                    self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                    print('Ping status : Not up-to-date, getting events required')
+                    self.sendGetEventsRequestOIE(lastServerEventID - self.lastEventID)
                     
                 else :
-                    moduleLogger.debug('Ping status : up-to-date, preparing next ping')
+                    print('Ping status : up-to-date, preparing next ping')
                     reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
                     
             
@@ -363,9 +363,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             ########### RESPONSE_EVENTS        
             elif fieldsList[0][0] == 7 :
                 print('events resp rec')
-                n = 0
                 for i in range(len(fieldsList[1])):
-                    n += 1
                     if fieldsList[1][i][1] == 1 : #Message event
                         print('message !')
                         self.lastEventID = fieldsList[1][i][0]
@@ -403,13 +401,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
                         moduleLogger.debug('GetEvent status : User logged out')
                         
-                if n < self.entry_number_awaited and n !=0 :
-                    print('GetEvent status : Asking for more events')
-                    self.sendGetEventsRequestOIE(self.entry_number_awaited - n)
-                    
-                else :
-                    print('GetEvent status : up-to-date, preparing next ping')
-                    reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                print('GetEvent status : up-to-date, preparing next ping')
+                reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
                     
             
                     
@@ -418,54 +411,41 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 print('rooms resp rec')
                 #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
                 #AddMovie accepts it in the following form : Title, IP, Port, ID 
-                n = 0
                 moduleLogger.debug('Room status : Rooms list received')
                 for i in range(len(fieldsList[1])):
-                    n += 1
                     if self.store.getMovieById(fieldsList[1][i][0]) == None :   
                         self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
                 
-                if n < self.entry_number_awaited and n !=0 :
-                    print('Room status : Asking for more rooms')
-                    self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
-                    
-                else : 
-                    c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
-                    movieList = []
-                    for i in range(len(c2wMovies)) :
-                        if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
-                            movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
-                    print(movieList)
-                    c2wUsers = self.store.getUserList() #get the user list in the appropriate format
-                    userList = []
-                    for i in range(len(userList)) :
-                        userList.append((c2wUsers[i].userName, self.store.getMovieByID(c2wUsers[i].userChatRoom).movieTitle))
-                    self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
-                    print('Room status : UI has been updated')
-                    
-                    print('Room status : UI is ready, starting ping cycle')
-                    self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
+                movieList = []
+                for i in range(len(c2wMovies)) :
+                    if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
+                        movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
+                print(movieList)
+                c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                userList = []
+                for i in range(len(userList)) :
+                    userList.append((c2wUsers[i].userName, self.store.getMovieByID(c2wUsers[i].userChatRoom).movieTitle))
+                self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
+                print('Room status : UI has been updated')
+                
+                print('Room status : UI is ready, starting ping cycle')
+                self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
                     
                                    
 
             ########### RESPONSE_USERS
             elif fieldsList[0][0] == 11 :
                 print('users resp rec')
-                n = 0
                 #FieldsList returns the data in the following form : user_id, user_name, room_id
                 #AddUser accepts it in the following form : Name, ID, Chatroom
                 moduleLogger.debug('Users status : Users list received')
                 for i in range(1, len(fieldsList[1])):
-                    n += 1
                     if self.store.getUserById(fieldsList[1][i][0]) == None :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         
-                if n < self.entry_number_awaited and n !=0 :
-                    print('Users status : Asking for more users')
-                    self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
-                else :
-                    print('Users status : Users list fully updated, asking for rooms')
-                    self.sendGetRoomsRequestOIE(1, 255)
+                print('Users status : Users list fully updated, asking for rooms')
+                self.sendGetRoomsRequestOIE(1, 255)
             
                 
             ########### RESPONSE_SWITCH_ROOM
