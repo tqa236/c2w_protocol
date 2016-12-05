@@ -6,7 +6,7 @@ import c2w
 from c2w.main.lossy_transport import LossyTransport
 logging.basicConfig()
 moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
-
+from c2w.main.constants import ROOM_IDS
 import time
 import c2w.main.constants
 
@@ -71,6 +71,7 @@ class c2wTcpChatClientProtocol(Protocol):
         self.seq_number = 0 #This variable contains the sequence number used to track packet loss
         self.userRoomID = 0 #This variable contains the room the client is currently in.
         self.entry_number_awaited = 0 #This variable contains the number of entry the client is expecting from the next multi-entry response
+        self.store = c2wClientModel() #The c2wClientModel is a class used to store all data about users and movies
 
     def sendLoginRequestOIE(self, userName):
         """
@@ -116,12 +117,24 @@ class c2wTcpChatClientProtocol(Protocol):
         """
         pass
 
+########### PUT_LOGOUT     
+    #OK
     def sendLeaveSystemRequestOIE(self):
         """
         Called by the client proxy  when the user
         has clicked on the leave button in the main room.
         """
-        pass
+        
+        moduleLogger.debug('Leave system request called')
+        
+        packet = packing.PUT_LOGOUT(self.seq_number,self.userID)
+        print('logout :')
+        print(packet)      
+        self.transport.write(packet, (self.serverAddress, self.serverPort))
+
+        self.packet_stored = packet
+        self.packet_awaited = 3
+        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 ########### GET_ROOMS   
     #OK
@@ -187,7 +200,40 @@ class c2wTcpChatClientProtocol(Protocol):
                         self.clientProxy.connectionRejectedONE('Username not available')
                         moduleLogger.debug('Login status : Username not available')
 
-
+                ########### RESPONSE_ROOMS
+                elif fieldsList[0][0] == 9 :
+                    print('rooms resp rec')
+                    #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
+                    #AddMovie accepts it in the following form : Title, IP, Port, ID 
+                    n = 0
+                    moduleLogger.debug('Room status : Rooms list received')
+                    for i in range(len(fieldsList[1])):
+                        n += 1
+                        if self.store.getMovieById(fieldsList[1][i][0]) == None :   
+                            self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
+                    
+                    if n < self.entry_number_awaited and n !=0 :
+                        print('Room status : Asking for more rooms')
+                        self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
+                        
+                    else : 
+                        c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
+                        movieList = []
+                        for i in range(len(c2wMovies)) :
+                            if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
+                                movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
+                        print(movieList)
+                        c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                        userList = []
+                        for i in range(len(userList)) :
+                            userList.append((c2wUsers[i].userName, self.store.getMovieByID(c2wUsers[i].userChatRoom).movieTitle))
+                        self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
+                        print('Room status : UI has been updated')
+                        
+                        print('Room status : UI is ready, starting ping cycle')
+                        self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                    
+                                   
 
 
                 ########### RESPONSE_USERS

@@ -90,16 +90,15 @@ class c2wTcpChatServerProtocol(Protocol):
         movie_list = self.serverProxy.getMovieList()
         users_list = self.serverProxy.getUserList()
         
-        i = 0
+
         movie_id_selected = []
         for movie in movie_list :
             if movie.movieId >= first_room_id :
                 movie_id_selected.append(movie.movieId)
-                i = i + 1
+
                 
         movie_id_sorted_list = sorted(movie_id_selected, key=int)
-        print('haha')        
-        print(len(movie_id_sorted_list))
+        
         if nbr_rooms > len(movie_id_sorted_list) :
             movie_id_sorted_list = movie_id_sorted_list[0:nbr_rooms]
         else :
@@ -109,10 +108,14 @@ class c2wTcpChatServerProtocol(Protocol):
         n_users_room = [] # il faut faire un vecteur de zeros
         
         for i in range(len(movie_id_sorted_list)) :
-            movie_list_to_response_rooms[i] = self.serverProxy.getMovieById(movie_id_sorted_list[i])
+            movie_list_to_response_rooms.append(self.serverProxy.getMovieById(movie_id_sorted_list[i]))
+            n_users_room.append(0)
             for users in users_list :
                 if users.userChatRoom == movie_id_sorted_list[i] :
-                    n_users_room[i] = n_users_room[i] + 1     
+                    n_users_room[i] = n_users_room[i] + 1
+                    
+                    
+        print(str(len(movie_list_to_response_rooms))+ "," + str(len(n_users_room)))                  
                     
         return [movie_list_to_response_rooms, n_users_room]
 
@@ -226,7 +229,7 @@ class c2wTcpChatServerProtocol(Protocol):
                     nbr_rooms = fieldsList[1][1]                                                        # Le nombre de movie room que on va envoyer
                     
                     movie_list = self.getRooms(first_room_id, nbr_rooms)[0]                                  # Une liste avec les classes c2wMovie qu'on va envoyer
-                    n_users_room_list = getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
+                    n_users_room_list = self.getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
                     
                     
                     packet = packing.RESPONSE_ROOMS(seq_number, user_id, movie_list, n_users_room_list) # On fait le paquet
@@ -248,4 +251,8 @@ class c2wTcpChatServerProtocol(Protocol):
                     
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1  # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                 # On enregistre le paquet
-                    self.transport.write(packet)                                               # On envoie le paquet        
+                    self.transport.write(packet)                                               # On envoie le paquet       
+
+
+
+ 
