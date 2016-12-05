@@ -277,21 +277,22 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                 print(" /n Ok 1")  
                 if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet    
-                                                               
-                elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plain d'usagers
+                    print(4)                                           
+                elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plein d'usagers
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
-                    
+                    print(2)
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
                     user_id_login = self.serverProxy.addUser(new_username, 1)# c2w.main.constants.ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
                     
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
+                    print(0)
                 else :                                                                                  # On ne sait pas ce que se passe
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x01)      # faire le paquet 
-                                             
+                    print(1)                                 
             else :
-                print("Ok 2")                                                                                       # Le username ne passe pas pour les lois du serveur
+                print("3")                                                                                       # Le username ne passe pas pour les lois du serveur
                 packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x03)          # faire le paquet
             
             self.transport.write(packet, host_port)                                                     # On envoie le paquet
