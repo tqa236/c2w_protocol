@@ -4,6 +4,8 @@ import struct
 import time
 import math
 from . import misc
+import c2w.main.constants
+from c2w.main.constants import ROOM_IDS
 
 ###########     
    
@@ -69,7 +71,7 @@ def GET_PING(seq_number, user_id, last_event, room_id):
     
 ###########
 
-def RESPONSE_PING(last_event):
+def RESPONSE_PING(seq_number, user_id, last_event):
     message_type = 5
     message_length = 3
     
@@ -227,7 +229,7 @@ def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
     
 ###########
 
-def RESPONSE_USERS(seq_number,user_id,users_list): 
+def RESPONSE_USERS(seq_number,user_id,users_list):
 
     message_type = 0x0B;
     nbr_users = len(users_list);
@@ -247,7 +249,10 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
     for i in range(nbr_users):
         user_id = users_list[i].userId;
         username = users_list[i].userName;
-        room_id = users_list[i].userChatRoom;
+        if users_list[i].userChatRoom == c2w.main.constants.ROOM_IDS.MAIN_ROOM :
+            room_id = 0;
+        else :
+            room_id = users_list[i].userChatRoom;
         user_length = len(users_list[i].userName);
 
         if i == 0:
