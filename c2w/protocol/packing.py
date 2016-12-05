@@ -196,8 +196,8 @@ def RESPONSE_ROOMS(seq_number,user_id,rooms_list,n_users_room):
     struct.pack_into(code,data,offset,message_type,seq_number,user_id,message_length,nbr_rooms);
 
     for i in range(nbr_rooms):
-        room_id = rooms_list[i].movieID;
-        ip_number = getListIP(rooms_list[i].movieIpAddress);
+        room_id = rooms_list[i].movieId;
+        ip_number = misc.getListIP(rooms_list[i].movieIpAddress);
         port_number = rooms_list[i].moviePort;
         name = rooms_list[i].movieTitle;
         nbr_users = n_users_room[i];
