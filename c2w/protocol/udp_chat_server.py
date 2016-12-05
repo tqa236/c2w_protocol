@@ -188,12 +188,12 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         movie_list = self.serverProxy.getMovieList()
         users_list = self.serverProxy.getUserList()
         
-        i = 0
+
         movie_id_selected = []
         for movie in movie_list :
-            if movie.movieID >= first_room_id :
-                movie_id_selected[i] = movie.movieID
-                i = i + 1
+            if movie.movieId >= first_room_id :
+                movie_id_selected.append(movie.movieId)
+
                 
         movie_id_sorted_list = sorted(movie_id_selected, key=int)
         
@@ -206,10 +206,14 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         n_users_room = [] # il faut faire un vecteur de zeros
         
         for i in range(len(movie_id_sorted_list)) :
-            movie_list_to_response_rooms[i] = self.serverProxy.getMovieById(movie_id_sorted_list[i])
+            movie_list_to_response_rooms.append(self.serverProxy.getMovieById(movie_id_sorted_list[i]))
+            n_users_room.append(0)
             for users in users_list :
                 if users.userChatRoom == movie_id_sorted_list[i] :
-                    n_users_room[i] = n_users_room[i] + 1     
+                    n_users_room[i] = n_users_room[i] + 1
+                    
+                    
+        print(str(len(movie_list_to_response_rooms))+ "," + str(len(n_users_room)))                  
                     
         return [movie_list_to_response_rooms, n_users_room]
         
@@ -357,8 +361,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     first_room_id = fieldsList[1][0]                                                    # La première movie room que on va envoyer
                     nbr_rooms = fieldsList[1][1]                                                        # Le nombre de movie room que on va envoyer
                     
-                    movie_list = getRooms(first_room_id, nbr_rooms)[0]                                  # Une liste avec les classes c2wMovie qu'on va envoyer
-                    n_users_room_list = getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
+                    movie_list = self.getRooms(first_room_id, nbr_rooms)[0]                                  # Une liste avec les classes c2wMovie qu'on va envoyer
+                    n_users_room_list = self.getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
                     
                     
                     packet = packing.RESPONSE_ROOMS(seq_number, user_id, movie_list, n_users_room_list) # On fait le paquet
