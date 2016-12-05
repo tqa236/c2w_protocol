@@ -223,12 +223,12 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         
         users_list = self.serverProxy.getUserList()                                  # On trouve tous les usagers
         
-        i = 0
+#        i = 0
         user_id_selected = []
         for user in users_list :                                                     # On prend les usagers dans la bonne movie room
             if user.userChatRoom == room_id and user.userId >= first_user_id :
-                user_id_selected[i] = user.userId                                    # On prend le id de tous les usagers sélectionnés
-                i = i + 1
+                user_id_selected.append(user.userId)                                    # On prend le id de tous les usagers sélectionnés
+#                i = i + 1
                 
         user_id_sorted_list = sorted(user_id_selected, key=int)                      # On ordenne le ID des usagers
         
@@ -240,9 +240,9 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         user_list_to_response_users = []                                             # liste vide pour garder le résultat
         
         for i in range(len(user_id_sorted_list)) :
-            user_list_to_response_rooms[i] = self.serverProxy.getUserById(user_id_sorted_list[i]) # On prend les objets de la classe c2wUser
+            user_list_to_response_users.append(self.serverProxy.getUserById(user_id_sorted_list[i])) # On prend les objets de la classe c2wUser
                     
-        return user_list_to_response_rooms
+        return user_list_to_response_users
     
 ###########
        

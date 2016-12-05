@@ -77,7 +77,7 @@ def decode(datagram):
     #RESPONSE_USERS
     elif messageHeader[0] == 11 :
         nbrUsers = struct.unpack('!B', datagram[6:7])
-        fieldsList.append(unpacking.decodeUsers(nbreUsers, datagram[7:]))
+        fieldsList.append(decodeUsers(nbrUsers[0], datagram[7:]))
     
     #PUT_SWITCH_ROOM
     elif messageHeader[0] == 12 :
@@ -114,7 +114,7 @@ def decodeUsers(entryNumber, datagram):
     resultList = []
     for i in range(entryNumber) : #User (user_id, name_length, user_name, room_id)
         information = struct.unpack('!BB', datagram[:2])
-        user_content = struct.unpack('!'+str(information[1])+'B')
+        user_content = struct.unpack('!'+str(information[1])+'s'+'B', datagram[2:2+information[1]+1])
         resultList.append([information[0], user_content[0].decode('utf-8'), user_content[1]]) #Returned in the following form : user_id, user_name, room_id
         datagram = datagram[(3+information[1]):]
     return resultList
