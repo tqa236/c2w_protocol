@@ -102,6 +102,8 @@ class c2wTcpChatClientProtocol(Protocol):
         """
         pass
 
+########### PUT_SWITCH_ROOM     
+    #OK
     def sendJoinRoomRequestOIE(self, roomName):
         """
         :param roomName: The room name (or movie title.)
@@ -115,7 +117,14 @@ class c2wTcpChatClientProtocol(Protocol):
             c2w.main.constants.ROOM_IDS.MAIN_ROOM when the user
             wants to go back to the main room.
         """
-        pass
+        
+        moduleLogger.debug('Join Room request called with room name = %s', roomName)
+        
+        self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
+        print('put switch room :')
+        print(packet)
+        packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)      
+        self.transport.write(packet)
 
 ########### PUT_LOGOUT     
     #OK
@@ -130,11 +139,23 @@ class c2wTcpChatClientProtocol(Protocol):
         packet = packing.PUT_LOGOUT(self.seq_number,self.userID)
         print('logout :')
         print(packet)      
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
 
-        self.packet_stored = packet
-        self.packet_awaited = 3
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+
+########### GET_PING     
+    #OK
+    def sendGetPingRequestOIE(self):
+        """
+        This function is used by the chatClientProtocol to get ping from the server
+        """
+        
+        moduleLogger.debug('Get ping request called')
+        
+        packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
+        print('get_ping :')
+        print(packet)
+        self.transport.write(packet)
+
 
 ########### GET_ROOMS   
     #OK
@@ -144,7 +165,7 @@ class c2wTcpChatClientProtocol(Protocol):
         """
         
         moduleLogger.debug('Get rooms request called')
-        
+        print('hahaha = ',self.seq_number)
         self.entry_number_awaited = nbr_rooms
         packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         self.transport.write(packet)
@@ -176,7 +197,6 @@ class c2wTcpChatClientProtocol(Protocol):
             messageLength = messageInfo[3] + 6
             if messageLength <= len(self.buffer):
                 datagram = self.buffer[:messageLength] # the entire message
-                print(datagram)
                 fieldsList = unpacking.decode(datagram)
                 print(fieldsList)
                 self.buffer = self.buffer[messageLength:] # the rest of the message
@@ -199,6 +219,21 @@ class c2wTcpChatClientProtocol(Protocol):
                     elif fieldsList[1][0] == 4 :
                         self.clientProxy.connectionRejectedONE('Username not available')
                         moduleLogger.debug('Login status : Username not available')
+
+                ########### RESPONSE_PING
+                elif fieldsList[0][0] == 5 :
+                    print('ping resp rec')
+                    lastServerEventID = fieldsList[1][0]
+                    if self.lastEventID != lastServerEventID :
+                        moduleLogger.debug('Ping status : Not up-to-date, getting events required')
+                        self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                        
+                    else :
+                        moduleLogger.debug('Ping status : up-to-date, preparing next ping')
+                        reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                        
+            
+
 
                 ########### RESPONSE_ROOMS
                 elif fieldsList[0][0] == 9 :
@@ -253,4 +288,7 @@ class c2wTcpChatClientProtocol(Protocol):
                     else :
                         moduleLogger.debug('Users status : Users list fully updated, asking for rooms')
                         self.sendGetRoomsRequestOIE(1, 255)                        
-            
+
+
+
+                    
