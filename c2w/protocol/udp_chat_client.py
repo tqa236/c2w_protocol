@@ -423,21 +423,23 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 for i in range(len(fieldsList[1])):
                     n += 1
                     if self.store.getMovieById(fieldsList[1][i][0]) == None :   
-                        self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0], fieldsList[1][i][4])
+                        self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
                 
                 if n < self.entry_number_awaited and n !=0 :
                     print('Room status : Asking for more rooms')
                     self.sendGetRoomsRequestOIE(n, self.entry_number_awaited - n)
                     
                 else : 
-                    movieList = self.store.getMovieList() #get the movie list in the appropriate format
-                    for i in range(1, len(movieList)) :
-                        movieList[i] = (movieList[i].movieTitle, movieList[i].movieIpAdress, movieList[i].moviePort)
-                
-                    userList = store.getUserList() #get the user list in the appropriate format
+                    c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
+                    movieList = []
+                    for i in range(len(c2wMovies)) :
+                        if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
+                            movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
+                    print(movieList)
+                    c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                    userList = []
                     for i in range(len(userList)) :
-                        room = self.store.getMovieByID(userList[i].userChatRoom).movieTitle
-                        userList[i] = (userList[i].userName, room)
+                        userList.append((c2wUsers[i].userName, self.store.getMovieByID(c2wUsers[i].userChatRoom).movieTitle))
                     self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
                     print('Room status : UI has been updated')
                     
