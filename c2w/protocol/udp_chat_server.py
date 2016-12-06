@@ -60,7 +60,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         self.last_event_ID = 0
         self.seq_number_users = {}    
         
-        self.delay_to_disconnect = 60       #
+        self.delay_to_disconnect = 10       #The delay that the server waits before considering the client disconnected (if said client doesn't even ping during said delay)
         
     
 ###########
@@ -254,16 +254,17 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         return user_list_to_response_users
         
 ###########
-    """
+    
     def checkConnectiontUser(self, user_id, seq_number):
     
-    if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :        
-        if seq_number == self.seq_number_users[user_id][0] :
-            self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements           
-            serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
-        else :
-            reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id, self.seq_number_users[user_id][0])
-    """          
+        if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName) :        
+            if seq_number == self.seq_number_users[user_id][0] :
+                self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements           
+                self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+                print('Disconnected an inactive user : ' + str(user_id))
+            else :
+                reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id, self.seq_number_users[user_id][0])
+             
 ###########
        
     def datagramReceived(self, datagram, host_port):
@@ -293,14 +294,14 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         ########### LOGIN REQUEST / RESPONSE_LOGIN
         if message_type == 0x00 :                                                                      # On a reçu le message de login
             new_username = fieldsList[1][0]
-                            
+            status = 5                
             if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur 
                 if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet    
-                    print(4)                                           
+                    status = 4                                           
                 elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plein d'usagers
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
-                    print(2)
+                    status = 2
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
                     user_id_login = self.serverProxy.addUser(new_username, ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     
@@ -308,15 +309,18 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
                     
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
-                    print(0)
+                    
+                    status = 0
                 else :                                                                                  # On ne sait pas ce que se passe
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x01)      # faire le paquet 
-                    print(1)                                 
+                    status = 1                                 
             else :
-                print("3")                                                                                       # Le username ne passe pas pour les lois du serveur
+                status = 3                                                                                       # Le username ne passe pas pour les lois du serveur
                 packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x03)          # faire le paquet
             
             self.transport.write(packet, host_port)                                                     # On envoie le paquet
+            if status == 0 :
+                reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id_login, self.seq_number_users[user_id_login][0])
                     
         ###########        
         
