@@ -51,17 +51,16 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #: The serverProxy, which the protocol must use
         #: to interact with the server (to access the movie list and to 
         #: access and modify the user list).
+        
         self.serverProxy = serverProxy
         self.lossPr = lossPr
-
-        #self.main_room = self.serverProxy
         
         self.events_list = {}
         self.last_event_ID = 0
         self.seq_number_users = {}    
         
-        self.delay_to_disconnect = 60       #
-
+        self.delay_to_disconnect = 60
+        
         self.rooms_actives = []
         
     
@@ -256,6 +255,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         return user_list_to_response_users
         
 ###########
+
     def connectionControl(self):
     
         full_movie_list = self.serverProxy.getMovieList()
@@ -279,16 +279,17 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         self.rooms_actives.remove(movie.movieTitle)                     # On supprime le video de la liste de video en cours  
        
 ###########
-    """
+
     def checkConnectiontUser(self, user_id, seq_number):
     
-    if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :        
-        if seq_number == self.seq_number_users[user_id][0] :
-            self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements           
-            serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
-        else :
-            reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id, self.seq_number_users[user_id][0])
-    """          
+        if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName) :        
+            if seq_number == self.seq_number_users[user_id][0] :
+                self.addEvent(0x04, user_id, None)                                               # On ajoute le logout à les événements           
+                self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+                print('Disconnected an inactive user : ' + str(user_id))
+            else :
+                reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id, self.seq_number_users[user_id][0])
+             
 ###########
        
     def datagramReceived(self, datagram, host_port):
@@ -318,14 +319,14 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         ########### LOGIN REQUEST / RESPONSE_LOGIN
         if message_type == 0x00 :                                                                      # On a reçu le message de login
             new_username = fieldsList[1][0]
-                            
+            status = 5                
             if self.loginRules(new_username) == 1:                                                     # Il faut passer par les régles du serveur 
                 if  self.serverProxy.userExists(new_username) :                                        # Il y a déjà quelqu'un avec le même username
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x04)     # faire le paquet    
-                    print(4)                                           
+                    status = 4                                           
                 elif len(self.serverProxy.getUserList()) > 255 :                                       # Le système est plein d'usagers
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x02)     # faire le paquet 
-                    print(2)
+                    status = 2
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
                     user_id_login = self.serverProxy.addUser(new_username, ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     
@@ -333,15 +334,18 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
                     
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
-                    print(0)
+                    
+                    status = 0
                 else :                                                                                  # On ne sait pas ce que se passe
                     packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x01)      # faire le paquet 
-                    print(1)                                 
+                    status = 1                                 
             else :
-                print("3")                                                                                       # Le username ne passe pas pour les lois du serveur
+                status = 3                                                                                       # Le username ne passe pas pour les lois du serveur
                 packet = packing.RESPONSE_LOGIN(0, 0, new_username , self.last_event_ID, 0x03)          # faire le paquet
             
             self.transport.write(packet, host_port)                                                     # On envoie le paquet
+            if status == 0 :
+                reactor.callLater(self.delay_to_disconnect, self.checkConnectiontUser, user_id_login, self.seq_number_users[user_id_login][0])
                     
         ###########        
         
@@ -394,7 +398,6 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     
                     self.transport.write(packet, host_port)
                     
-                    
             ########### ROOMS REQUEST / RESPONSE_ROOMS
                 if message_type == 0x08 :                                                               # On a reçu le message de get_rooms
                     first_room_id = fieldsList[1][0]                                                    # La première movie room que on va envoyer
@@ -402,7 +405,6 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     
                     movie_list = self.getRooms(first_room_id, nbr_rooms)[0]                                  # Une liste avec les classes c2wMovie qu'on va envoyer
                     n_users_room_list = self.getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
-                    
                     
                     packet = packing.RESPONSE_ROOMS(seq_number, server_id, movie_list, n_users_room_list) # On fait le paquet
                     
@@ -440,7 +442,6 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     else :
                         old_room = self.serverProxy.getMovieByTitle(old_room).movieId
                     
-                    
                     if new_room != c2w.main.constants.ROOM_IDS.MAIN_ROOM and self.serverProxy.getMovieByTitle(new_room) is None :
                         # Il existe pas le movie room (manque le bon code)                        
                         packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)        # On fait le paquet 
@@ -454,8 +455,6 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         else :
                             packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)    # On fait le paquet
                             
-                                       
-                        
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet  
                     self.transport.write(packet, host_port)                                     # On envoie le paquet                            
@@ -469,7 +468,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     if room_message == 0  :                                                           # Si nous sommes dans la MAIN ROOM
                         room_message = c2w.main.constants.ROOM_IDS.MAIN_ROOM
                     else :
-                        room_message = self.serverProxy.getMovieByTitle(room_message)
+                        room_message = self.serverProxy.getMovieById(room_message).movieTitle
                         
                     if room_message is None :                                                       # Il n'y a pas le movie room dans le système
                         packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x02)          # On fait le paquet                        
