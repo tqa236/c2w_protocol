@@ -106,6 +106,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
                 self.resendTries += 1
                 reactor.callLater(self.delay, self.resend_packet, seq_number)
+            else :
+                self.clientProxy.applicationQuit()
                               
 
 
@@ -178,9 +180,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         moduleLogger.debug('Join Room request called with room name = %s', roomName)
         
         self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
+        packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)
         print('put switch room :')
-        print(packet)
-        packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)      
+        print(packet)    
         self.transport.write(packet, (self.serverAddress, self.serverPort))
         
         self.packet_stored = packet
@@ -363,17 +365,18 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         self.lastEventID = fieldsList[1][i][0]
                         
                         user = self.store.getUserById(fieldsList[1][i][3])
-                        if user.userChatRoom == self.userRoomID :
+                        print(user)
+                        if user.userChatRoom == self.userRoomID and user.userId != self.userID:
                             self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
-                            moduleLogger.debug('GetEvents status : New message available')
+                            print(fieldsList[1][i][4])
                         
                     elif fieldsList[1][i][1] == 2 : #New user event
                         print('newser !')
                         self.lastEventID = fieldsList[1][i][0]
                         
-                        room = self.store.getMovieById(fieldsList[1][i][2]).movieTitle
-                        self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room)
-                        self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room)
+                        room = self.store.getMovieById(fieldsList[1][i][2])
+                        self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room.movieId)
+                        self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room.movieTitle)
                         moduleLogger.debug('GetEvents status : New user')
                         
                     elif fieldsList[1][i][1] == 3 : #Switch room event
@@ -415,12 +418,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 for i in range(len(c2wMovies)) :
                     if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
                         movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
-                print(movieList)
                 c2wUsers = self.store.getUserList() #get the user list in the appropriate format
-                print(c2wUsers)
                 userList = []
-                for i in range(len(userList)) :
-                    userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
+                for i in range(len(c2wUsers)) :
+                    if c2wUsers[i].userId != self.userID :
+                        userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
                 print(userList)
                 self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
                 print('Room status : UI has been updated')
@@ -436,7 +438,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 #FieldsList returns the data in the following form : user_id, user_name, room_id
                 #AddUser accepts it in the following form : Name, ID, Chatroom
                 moduleLogger.debug('Users status : Users list received')
-                for i in range(1, len(fieldsList[1])):
+                for i in range(len(fieldsList[1])):
                     if not self.store.userExists(fieldsList[1][i][1]) :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         

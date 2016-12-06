@@ -91,18 +91,20 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
 
         # event_type = 0x01 # MESSAGE # content = message(String)
         # event_type = 0x02 # NEW_USER # content = username(String)
-        # event_type = 0x03 # SWITCH_ROOM # content = new_room_id
+        # event_type = 0x03 # SWITCH_ROOM # content = old_room_id
         # event_type = 0x04 # LOGOUT # content = None
                 
         room_id = self.serverProxy.getUserById(user_id).userChatRoom    # On récupere le room_id du usager
         if room_id == c2w.main.constants.ROOM_IDS.MAIN_ROOM :        # Si nous sommes dans la MAIN ROOM
-            room_id = 0                                             # On change c2w.main.constants.ROOM_IDS.MAIN_ROOM par 0 (entière)
+            room_id = 0
+        else :
+            room_id = self.serverProxy.getMovieByTitle(room_id).movieId   # On change c2w.main.constants.ROOM_IDS.MAIN_ROOM par 0 (entière)
         
         if self.last_event_ID == 16777215 :                             # Si on arrive à la fin, on retourne au débout
             event_id = 0
         else :                                                          # Sinon on incremente
             event_id =  self.last_event_ID + 1
-           
+        
         coded_event = packing.CODE_EVENT(event_type, event_id, room_id, user_id, content)   # code le event
         self.events_list[event_id] = coded_event                                  # on enregistre le event sur le bon champ
         
@@ -278,6 +280,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         message_type = fieldsList[0][0]
         seq_number = fieldsList[0][1]
         user_id = fieldsList[0][2]
+        server_id = 0
         
         # Je crois qu'on ne peut pas utiliser resendResponse dans login/logout
         # Je crois qu'on ne peut pas utiliser resendResponse dans login/logout
@@ -322,25 +325,25 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         
             ########### LOGOUT REQUEST / RESPONSE_LOGOUT
                 if message_type == 0x02 :                                                           # On a reçu le message de logout
-                    if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # On vérifie si il y a le user sur la base de données                        
-                        self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user  "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
+                    if self.serverProxy.getUserById(user_id) :    # On vérifie si il y a le user sur la base de données                        
+                        self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user         
                         self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements                
-                        serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
-                        packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)                   # On fait le paquet 
-                        self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
+                        self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+                        packet = packing.RESPONSE_LOGOUT(seq_number,server_id,0x00)                   # On fait le paquet 
+                        self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
                         self.transport.write(packet, host_port)
                         
                     else :                                                                          # Si on a déjà supprimés le user de la base de données
-                        packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)
+                        packet = packing.RESPONSE_LOGOUT(seq_number,server_id,0x00)
                         self.transport.write(packet, host_port)
                         
-                    if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # Si même après avoir supprimé le user, il existe dans la base de données
-                        packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x01)                   # On fait le paquet 
+                    if self.serverProxy.getUserById(user_id) :    # Si même après avoir supprimé le user, il existe dans la base de données
+                        packet = packing.RESPONSE_LOGOUT(seq_number,server_id,0x01)                   # On fait le paquet 
                         self.transport.write(packet, host_port)                                     # On envoie le paquet      
             
             ########### PING REQUEST / RESPONSE_PING
                 if message_type == 0x04 :                                                       # On a reçu le message de get_ping
-                    packet = packing.RESPONSE_PING(seq_number, user_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
+                    packet = packing.RESPONSE_PING(seq_number, server_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
                     self.transport.write(packet, host_port)      
@@ -356,7 +359,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     print(packet_content)                                            # le packet binaire avec tous les events déjà codé (sans le nbr_events)
                     real_events_number = getEvents[1]                                            # Le nombre de events qu'on envoie (pas necessairement le celui demandé)
                     message_length = len(packet_content)                                        # la taille de la message (sans nbr_events, on ajoute ça dans RESPONSE_EVENTS_HEAD)
-                    packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, user_id, real_events_number,message_length) # le packet binaire avec le message head
+                    packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, server_id, real_events_number,message_length) # le packet binaire avec le message head
                     print(packet_head)
                     packet = packet_head + packet_content
                     print(packet)                                                             # On additionne les deux packet binaires
@@ -376,7 +379,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     n_users_room_list = self.getRooms(first_room_id, nbr_rooms)[1]                           # Une liste avec le nombre de usagers dans chaque movie room
                     
                     
-                    packet = packing.RESPONSE_ROOMS(seq_number, user_id, movie_list, n_users_room_list) # On fait le paquet
+                    packet = packing.RESPONSE_ROOMS(seq_number, server_id, movie_list, n_users_room_list) # On fait le paquet
                     
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1           # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                          # On enregistre le paquet
@@ -390,7 +393,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     user_list = self.getUsers(first_user_id, nbr_users, self.serverProxy.getUserById(user_id).userChatRoom)                             
                     # Une liste avec les classes c2wUser qu'on va envoyer
                     
-                    packet = packing.RESPONSE_USERS(seq_number, user_id, user_list)            # On fait le paquet
+                    packet = packing.RESPONSE_USERS(seq_number, server_id, user_list)            # On fait le paquet
                     
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1  # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                 # On enregistre le paquet
@@ -402,17 +405,31 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     old_room = self.serverProxy.getUserById(user_id).userChatRoom               # L'ancienne room
                     new_room = fieldsList[1][0]                                                 # la nouvelle room
                     
-                    if self.serverProxy.getMovieById(new_room) :                                # S'il existe la room dans le système 
+                    if new_room == 0  :                                                         # Si nous sommes dans la MAIN ROOM
+                        new_room = c2w.main.constants.ROOM_IDS.MAIN_ROOM
+                    else :
+                        new_room = self.serverProxy.getMovieById(new_room).movieTitle
+                        
+                    if old_room == c2w.main.constants.ROOM_IDS.MAIN_ROOM :
+                        old_room = 0
+                    else :
+                        old_room = self.serverProxy.getMovieByTitle(old_room).movieId
+                    
+                    
+                    if new_room != c2w.main.constants.ROOM_IDS.MAIN_ROOM and self.serverProxy.getMovieByTitle(new_room) is None :
+                        # Il existe pas le movie room (manque le bon code)                        
+                        packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)        # On fait le paquet 
+                    
+                    else :                                                                     # S'il existe la room dans le système 
                         self.serverProxy.updateUserChatroom(username, new_room)                 # On met à jour la room
                     
                         if new_room == self.serverProxy.getUserById(user_id).userChatRoom :     # On a bien mis à jour la room
                             self.addEvent(0x03, user_id, old_room)                              # On ajoute à les events     
-                            packet = packing.RESPONSE_SWITCH_ROOM(seq_number, user_id, 0x00)    # On fait le paquet
+                            packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x00)    # On fait le paquet
                         else :
-                            packet = packing.RESPONSE_SWITCH_ROOM(seq_number, user_id, 0x01)    # On fait le paquet
+                            packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)    # On fait le paquet
                             
-                    else :                                                                      # Il existe pas le movie room (manque le bon code)
-                        packet = packing.RESPONSE_SWITCH_ROOM(seq_number, user_id, 0x01)        # On fait le paquet                    
+                                       
                         
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet  
@@ -423,19 +440,24 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                 if message_type == 0x0E :                                                         # On a reçu le message de put_new_message
                     room_message = fieldsList[1][0]                                               # Le movie id lequel le user envoie le message
                     new_message = fieldsList[1][1]                                                # Le message (String) envoyé par le user
+                    
+                    if room_message == 0  :                                                           # Si nous sommes dans la MAIN ROOM
+                        room_message = c2w.main.constants.ROOM_IDS.MAIN_ROOM
+                    else :
+                        room_message = self.serverProxy.getMovieByTitle(room_message)
                         
-                    if not self.serverProxy.getMovieById(room_message) :                          # Il n'y a pas le movie room dans le système
-                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, user_id, 0x02)          # On fait le paquet                        
+                    if room_message is None :                                                       # Il n'y a pas le movie room dans le système
+                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x02)          # On fait le paquet                        
                                                     
                     elif self.serverProxy.getUserById(user_id).userChatRoom != room_message :     # La movie room n'est pas la movie room courant d'usager
-                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, user_id, 0x03)          # On fait le paquet
+                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x03)          # On fait le paquet
                     
-                    elif self.serverProxy.getUserById(user_id).userChatRoom == room_message and self.serverProxy.getMovieById(room_message) :    #Le bon cas
+                    elif self.serverProxy.getUserById(user_id).userChatRoom == room_message :    #Le bon cas
                         self.addEvent(0x01, user_id, new_message)                                 # On ajoute à les events
-                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, user_id, 0x00)          # On fait le paquet
+                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x00)          # On fait le paquet
                         
                     else:                                                                         # On ne sait pas ce que se passe
-                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, user_id, 0x01)          # On fait le paquet
+                        packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x01)          # On fait le paquet
                     
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1     # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                    # On enregistre le paquet  
