@@ -61,6 +61,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         self.seq_number_users = {}    
         
         self.delay_to_disconnect = 60       #
+
+        self.rooms_actives = []
         
     
 ###########
@@ -253,6 +255,29 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     
         return user_list_to_response_users
         
+###########
+    def connectionControl(self):
+    
+        full_movie_list = self.serverProxy.getMovieList()
+        full_user_list = self.serverProxy.getUserList()
+        
+        for movie in full_movie_list :
+            someone_is_watching = False                                                 # Dans le debout de la recherche, personne regarde la video    
+            if movie.movieTitle != ROOM_IDS.MAIN_ROOM :                                 # Si la movie room n'est pas la na MAIN_ROOM (sans straming)
+                
+                for user in full_user_list :
+                    if user.userChatRoom == movie.movieTitle :                          # Il y a quelqu'un dans la room
+                        someone_is_watching = True                                      # Il y a quelqu'un en regardant la video
+                        if not movie.movieTitle in self.rooms_actives :                 # Le film n'étais pas encore en straming
+                            self.serverProxy.startStreamingMovie(movie.movieTitle)      # On commence le streaming
+                            self.rooms_actives.append(movie.movieTitle)                 # On ajute le film à le liste des films en streaming
+                    break                                                               # On sort du boucle, parce que un client est souffisant
+                                                                              
+                if not someone_is_watching :                                            # Personne regarde cette video
+                    if movie.movieTitle in self.rooms_actives :                         # Il y avait avant quelqu'un qui regardait cette video
+                        self.serverProxy.stopStreamingMovie(movie.movieTitle)           # On arrête le streaming  
+                        self.rooms_actives.remove(movie.movieTitle)                     # On supprime le video de la liste de video en cours  
+       
 ###########
     """
     def checkConnectiontUser(self, user_id, seq_number):
