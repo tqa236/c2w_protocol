@@ -371,7 +371,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         print('newser !')
                         self.lastEventID = fieldsList[1][i][0]
                         
-                        room = self.store.getMovieByID(fieldsList[1][i][2]).movieTitle
+                        room = self.store.getMovieById(fieldsList[1][i][2]).movieTitle
                         self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room)
                         self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room)
                         moduleLogger.debug('GetEvents status : New user')
@@ -380,8 +380,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         print('switchi !')
                         self.lastEventID = fieldsList[1][i][0]
                         
-                        name = self.store.getUserByID(fieldsList[1][i][3]).userName
-                        room = self.store.getMovieByID(fieldsList[1][i][4]).movieTitle
+                        name = self.store.getUserById(fieldsList[1][i][3]).userName
+                        room = self.store.getMovieById(fieldsList[1][i][4]).movieTitle
                         self.store.updateUserChatroom(name, fieldsList[1][i][4])
                         self.clientProxy.userUpdateReceivedONE(name, room)
                         moduleLogger.debug('GetEvent status : User switched room')
@@ -390,7 +390,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         print('disco !')
                         self.lastEventID = fieldsList[1][i][0]
                         
-                        name = self.store.getUserByID(fieldsList[1][i][3]).userName
+                        name = self.store.getUserById(fieldsList[1][i][3]).userName
                         self.store.removeUser(name)
                         self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
                         moduleLogger.debug('GetEvent status : User logged out')
@@ -407,7 +407,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 #AddMovie accepts it in the following form : Title, IP, Port, ID 
                 moduleLogger.debug('Room status : Rooms list received')
                 for i in range(len(fieldsList[1])):
-                    if self.store.getMovieById(fieldsList[1][i][0]) == None :   
+                    if self.store.getMovieById(fieldsList[1][i][0]) is None :   
                         self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
                 
                 c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
@@ -417,9 +417,11 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                         movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
                 print(movieList)
                 c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                print(c2wUsers)
                 userList = []
                 for i in range(len(userList)) :
-                    userList.append((c2wUsers[i].userName, self.store.getMovieByID(c2wUsers[i].userChatRoom).movieTitle))
+                    userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
+                print(userList)
                 self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
                 print('Room status : UI has been updated')
                 
@@ -435,7 +437,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 #AddUser accepts it in the following form : Name, ID, Chatroom
                 moduleLogger.debug('Users status : Users list received')
                 for i in range(1, len(fieldsList[1])):
-                    if self.store.getUserById(fieldsList[1][i][0]) == None :
+                    if not self.store.userExists(fieldsList[1][i][1]) :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         
                 print('Users status : Users list fully updated, asking for rooms')

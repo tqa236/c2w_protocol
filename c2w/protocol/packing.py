@@ -106,21 +106,21 @@ def CODE_EVENT(event_type, event_id,room_id,user_id, message) :
       
     if event_type == 0x01 :
         message_length = len(message)
-        code = 'HB' + 'BBBH' +  str(message_length) + 's'
+        code = '!BH' + 'BBBH' +  str(message_length) + 's'
         
         data = struct.pack(code, event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))   
         
     elif event_type == 0x02 :
          message_length = len(message)
-         code = 'HB' + 'BBBB' + str(message_length) + 's'
+         code = '!BH' + 'BBBB' + str(message_length) + 's'
          data=struct.pack(code,event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))
        
     elif event_type == 0x03 :
-         code = 'HB' + 'BBBB'
+         code = '!BH' + 'BBBB'
          data = struct.pack(code,event_id1, event_id0, event_type, message, user_id, room_id)
     
     elif event_type == 0x04 :
-         code = 'HB' + 'BBB'
+         code = '!BH' + 'BBB'
          data = struct.pack(code,event_id1, event_id0, event_type, room_id, user_id)
          
     return data
@@ -132,7 +132,7 @@ def RESPONSE_EVENTS_HEAD(seq_number, user_id, nbr_events,message_length) :
     message_type = 0x07
     message_length = message_length + 1   
     
-    code = 'BHBH' + 'B'
+    code = '!BHBH' + 'B'
     data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_events)
     return data
     
@@ -145,13 +145,13 @@ def RESPONSE_EVENTS(seq_number, user_id, nbr_events, events_list) :
     for i in range(len(events_list)) :
         message_length += len(events_list[i])
     
-    code = 'BHBH' + 'B'
+    code = '!BHBH' + 'B'
     data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_events)
     for i in range(len(events_list)) :
         event_id = events_list[i][0]
         event_id1 = math.floor(event/math.pow(2,16))
         event_id0 = last_event - event_id1*math.pow(2,16)
-        code = 'BHBBB'
+        code = '!BHBBB'
         if events_list[i][1] == 1 :
             code += 'H' + str(events_list[i][4]) + 's'
             data += struct.pack(code, events_list[i][0], events_list[i][1], events_list[i][2], events_list[i][3], events_list[i][4], events_list[i][5])
