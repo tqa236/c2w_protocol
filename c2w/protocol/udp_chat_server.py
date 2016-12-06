@@ -125,15 +125,17 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
        
         #Je n'utilise pas encore room_id, mais, je crois que je vais changer
         
-        n_event = last_event_id
-        get_events_list = []   # Je ne suis pas sûr si je dois déclarer
-        
-        real_events_number = 0 
-        
-        for i in range(nbr_events) :
-        
-            if n_event > self.last_event_ID :
-                break
+        n_event = last_event_id + 1
+        get_events_list = b''   
+        real_events_number = 0
+        i = 0
+        end = False
+        while i < nbr_events and not end :
+            i += 1
+            if n_event == self.last_event_ID :
+                get_events_list += self.events_list[n_event]
+                real_events_number = real_events_number + 1
+                end = True
             elif n_event == 16777215 :
                 get_events_list += self.events_list[n_event]
                 n_event = 0
@@ -141,8 +143,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
             else :
                 get_events_list += self.events_list[n_event]
                 n_event = n_event + 1
-                real_events_number = real_events_number + 1
-                
+                real_events_number = real_events_number + 1    
         return [get_events_list, real_events_number]
     
 ###########
@@ -300,8 +301,9 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                 elif not self.serverProxy.userExists(new_username) :                                   # Il n'y a personne avec le même username
                     user_id_login = self.serverProxy.addUser(new_username, ROOM_IDS.MAIN_ROOM) # On ajoute le user à base de données et prendre le id
                     
-                    packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
                     self.addEvent(0x02, user_id_login, new_username)                                   # On ajoute le login à les événements
+                    packet = packing.RESPONSE_LOGIN(0, user_id_login, new_username , self.last_event_ID,0x00) # faire le paquet
+                    
                     self.seq_number_users[user_id_login] = [0,packet]                                   # On va créer une position pour le user seq_number
                     print(0)
                 else :                                                                                  # On ne sait pas ce que se passe
@@ -349,11 +351,15 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     nbr_events = fieldsList[1][1]                                               # Le nombre de events que le usager demande
                     room_id = fieldsList[1][2]                                                  # La room où le usager demande les events
                     
-                    packet_content = getEvent(last_event_id,room_id,nbr_events)[0]              # le packet binaire avec tous les events déjà codé (sans le nbr_events)
-                    real_events_number = getEvent(last_event_id,room_id,nbr_events)[1]          # Le nombre de events qu'on envoie (pas necessairement le celui demandé)
+                    getEvents = self.getEvent(last_event_id,room_id,nbr_events)
+                    packet_content = getEvents[0]
+                    print(packet_content)                                            # le packet binaire avec tous les events déjà codé (sans le nbr_events)
+                    real_events_number = getEvents[1]                                            # Le nombre de events qu'on envoie (pas necessairement le celui demandé)
                     message_length = len(packet_content)                                        # la taille de la message (sans nbr_events, on ajoute ça dans RESPONSE_EVENTS_HEAD)
                     packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, user_id, real_events_number,message_length) # le packet binaire avec le message head
-                    packet = packet_head + packet_content                                                              # On additionne les deux packet binaires
+                    print(packet_head)
+                    packet = packet_head + packet_content
+                    print(packet)                                                             # On additionne les deux packet binaires
                     
                     self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
                     self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet

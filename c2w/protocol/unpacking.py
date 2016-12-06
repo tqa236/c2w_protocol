@@ -24,7 +24,7 @@ def decode(datagram):
     #RESPONSE_LOGIN    
     elif messageHeader[0] == 1 :
         messageBody = struct.unpack('!BBBH', datagram[6:]) #Struct does not have a 3 byte type, so we use a '!BH' type instead
-        lastEventID = int(messageBody[2]*math.pow(2,16) + messageBody[3]) #For the BH type to be converted into a 3 byte value we need to multiply the single byte type (B) by 2^16
+        lastEventID = int(messageBody[2]*65536 + messageBody[3]) #For the BH type to be converted into a 3 byte value we need to multiply the single byte type (B) by 2^16
         fieldsList.append([messageBody[0], messageBody[1], lastEventID])
     
     #PUT_LOGOUT
@@ -57,7 +57,7 @@ def decode(datagram):
     #RESPONSE_EVENTS
     elif messageHeader[0] == 7 :
         nbrEvents = struct.unpack('!B', datagram[6:7])
-        fieldsList.append(unpacking.decodeEvents(nbreEvents, datagram[7:]))
+        fieldsList.append(decodeEvents(nbrEvents[0], datagram[7:]))
     
     #GET_ROOMS
     elif messageHeader[0] == 8 :
@@ -134,7 +134,6 @@ def decodeRooms(entryNumber, datagram):
     for i in range(entryNumber) : #Room (room_id, IP, Port, name_length, room_name, nbr_users)
         information = struct.unpack('!BBBBBHB', datagram[:8])
         ipAdress = misc.decodeIpAdress(information[1], information[2], information[3], information[4])
-        print(str(information[6] + 1))
         room_content = struct.unpack('!'+str(information[6])+'sB',datagram[8:8 + information[6] + 1])
         resultList.append([information[0], ipAdress, information[5], room_content[0].decode('utf-8'), room_content[1]]) #Returned in the following form : Room_id, IP, Port, Room_name, Nbr_users
         datagram = datagram[(9+information[6]):]

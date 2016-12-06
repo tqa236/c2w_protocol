@@ -235,8 +235,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         
         moduleLogger.debug('Get events request called')
-        
-        self.entry_number_awaited = nbre_events
         packet = packing.GET_EVENTS(self.seq_number, self.userID, self.lastEventID, nbr_events, 0)
         print('get events :')
         print(packet)
@@ -255,8 +253,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         
         moduleLogger.debug('Get rooms request called')
-        
-        self.entry_number_awaited = nbr_rooms
         packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         print('get rooms :')
         print(packet)
@@ -274,8 +270,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         
         moduleLogger.debug('Get users request called')
-        
-        self.entry_number_awaited = nbr_users
         packet = packing.GET_USERS(self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
         print('get_users :')
         print(packet)
