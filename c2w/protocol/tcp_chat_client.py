@@ -214,7 +214,8 @@ class c2wTcpChatClientProtocol(Protocol):
                 fieldsList = unpacking.decode(datagram)
                 print(fieldsList)
                 self.buffer = self.buffer[messageLength:] # the rest of the message
-                
+                self.seq_number += 1
+
                 if fieldsList[0][0] == 1 :          
                     if fieldsList[1][0] == 0 :                    
                         moduleLogger.debug('Login status : Done')

@@ -265,15 +265,13 @@ class c2wTcpChatServerProtocol(Protocol):
                 ###########        
                 if user_id in self.seq_number_users :     
                     if seq_number == self.seq_number_users[user_id][0] + 1 : 
-                        print('seq client = ',seq_number)
-                        print('seq server = ',self.seq_number_users[user_id][0] + 1 )
                     ########### LOGOUT REQUEST / RESPONSE_LOGOUT
                         if message_type == 0x02 :                                                           # On a reçu le message de logout
                             print('log out')                            
-                            if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # On vérifie si il y a le user sur la base de données                        
+                            if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName): # On vérifie si il y a le user sur la base de données                        
                                 self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user  "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
                                 self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements                
-                                serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+                                self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName) # On supprime le user (On doit faire ça après addEvent)
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)                   # On fait le paquet 
                                 self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
                                 self.transport.write(packet)
@@ -282,7 +280,7 @@ class c2wTcpChatServerProtocol(Protocol):
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)
                                 self.transport.write(packet)
                                 
-                            if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # Si même après avoir supprimé le user, il existe dans la base de données
+                            if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName): # Si même après avoir supprimé le user, il existe dans la base de données
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x01)                   # On fait le paquet 
                                 self.transport.write(packet)                                                # On envoie le paquet      
 
