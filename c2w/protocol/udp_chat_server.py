@@ -172,7 +172,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         #               Donc, avec le nùmero_id, on peut chercher le paquet déjà envoyè dans le dictionary et lui renvoie, retourn = true
         #               S'il n'y a pas le username, donc on est libre pour enrégistrer le login retourn = false
         
-        if message_type == 0x00 or message_type == 0x02 :           # Pas encore implementé pour login et logout 
+        if message_type == 0x00 or message_type == 0x02 :        # Pas encore implementé pour login et logout 
             packet = 0                                           # Dans les cas au dessus, 'resendResponse' est transparent
         else :
             if seq_number == self.seq_number_users[user_id][0] :    # On vérifie si le seq_number reçu est equal le dernière seq_number envoyé
@@ -256,7 +256,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         
 ###########
 
-    def connectionControl(self):
+    def streamingControl(self):
     
         full_movie_list = self.serverProxy.getMovieList()
         full_user_list = self.serverProxy.getUserList()
@@ -268,21 +268,25 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                 for user in full_user_list :
                     if user.userChatRoom == movie.movieTitle :                          # Il y a quelqu'un dans la room
                         someone_is_watching = True                                      # Il y a quelqu'un en regardant la video
+                        self.serverProxy.startStreamingMovie(movie.movieTitle)          # On commence le streaming                        
                         if not movie.movieTitle in self.rooms_actives :                 # Le film n'étais pas encore en straming
                             self.serverProxy.startStreamingMovie(movie.movieTitle)      # On commence le streaming
+ 
                             self.rooms_actives.append(movie.movieTitle)                 # On ajute le film à le liste des films en streaming
-                    break                                                               # On sort du boucle, parce que un client est souffisant
-                                                                              
+                            print (" ou aqui")
+                        break                                                           # On sort du boucle, parce que un client est souffisant
+
+                                                           
                 if not someone_is_watching :                                            # Personne regarde cette video
                     if movie.movieTitle in self.rooms_actives :                         # Il y avait avant quelqu'un qui regardait cette video
-                        self.serverProxy.stopStreamingMovie(movie.movieTitle)           # On arrête le streaming  
+                        self.serverProxy.stopStreamingMovie(movie.movieTitle)           # On arrête le streaming
+                        print ("estoy aqui")  
                         self.rooms_actives.remove(movie.movieTitle)                     # On supprime le video de la liste de video en cours  
-       
 ###########
 
     def checkConnectiontUser(self, user_id, seq_number):
     
-        if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName) :        
+        if not self.serverProxy.getUserById(user_id) is None :        
             if seq_number == self.seq_number_users[user_id][0] :
                 self.addEvent(0x04, user_id, None)                                               # On ajoute le logout à les événements           
                 self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
@@ -487,6 +491,9 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     self.seq_number_users[user_id][1] = packet                                    # On enregistre le paquet  
                     self.transport.write(packet, host_port)                                       # On envoie le paquet
                         
+            
+        self.streamingControl()            
+            
             ###########                       
                                               
 
