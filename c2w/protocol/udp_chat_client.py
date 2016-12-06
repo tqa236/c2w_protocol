@@ -420,6 +420,8 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                     if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
                         movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
                 c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                print("###########################")
+                print(c2wUsers)
                 userList = []
                 for i in range(len(c2wUsers)) :
                     userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
@@ -438,7 +440,9 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 #FieldsList returns the data in the following form : user_id, user_name, room_id
                 #AddUser accepts it in the following form : Name, ID, Chatroom
                 moduleLogger.debug('Users status : Users list received')
+                print(fieldsList)
                 for i in range(len(fieldsList[1])):
+                    print("AAA")
                     if not self.store.userExists(fieldsList[1][i][1]) :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         

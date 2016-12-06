@@ -229,7 +229,7 @@ def GET_USERS(seq_number,user_id,first_user_id,nbr_users,room_id):
     
 ###########
 
-def RESPONSE_USERS(seq_number,user_id,users_list):
+def RESPONSE_USERS(seq_number,user_id,users_list, server):
 
     message_type = 0x0B;
     nbr_users = len(users_list);
@@ -252,7 +252,8 @@ def RESPONSE_USERS(seq_number,user_id,users_list):
         if users_list[i].userChatRoom == c2w.main.constants.ROOM_IDS.MAIN_ROOM :
             room_id = 0;
         else :
-            room_id = users_list[i].userChatRoom;
+            room_id = server.getMovieByTitle(users_list[i].userChatRoom).movieId;
+            
         user_length = len(users_list[i].userName);
 
         if i == 0:
