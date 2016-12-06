@@ -156,6 +156,20 @@ class c2wTcpChatClientProtocol(Protocol):
         print(packet)
         self.transport.write(packet)
 
+########### GET_EVENTS     
+    #OK
+    def sendGetEventsRequestOIE(self,nbr_events):
+        """
+        This function is used by the chatClientProtocol when a ping from the server has revealed that the client is not synchronized yet
+        """
+        
+        moduleLogger.debug('Get events request called')
+        packet = packing.GET_EVENTS(self.seq_number, self.userID, self.lastEventID, nbr_events, 0)
+        print('get events :')
+        print(packet)
+        self.transport.write(packet)
+
+
 
 ########### GET_ROOMS   
     #OK
@@ -200,7 +214,8 @@ class c2wTcpChatClientProtocol(Protocol):
                 fieldsList = unpacking.decode(datagram)
                 print(fieldsList)
                 self.buffer = self.buffer[messageLength:] # the rest of the message
-                
+                self.seq_number += 1
+
                 if fieldsList[0][0] == 1 :          
                     if fieldsList[1][0] == 0 :                    
                         moduleLogger.debug('Login status : Done')

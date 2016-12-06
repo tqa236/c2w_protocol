@@ -149,6 +149,43 @@ class c2wTcpChatServerProtocol(Protocol):
         
         print(coded_event) 
 
+###########
+              
+    def getEvent(self,last_event_id,room_id,nbr_events): ######################################################## Il faut commenter
+        # Je dois créer une list/dictionary avec tous les events
+        # Je dois créer une variable current_event
+        # La clés sera le event_number et le contenu sera le paquet, déjà dans la forme binaire pour ajouter dans la réponse RESPONSE_EVENTS
+        # Les clés sont numérotés de 0 (/0x00/0x00/0x00) à 16777215 (/0xff/0xff/0xff)
+        # Si on arrive au fin de la list/dictionary on doit commencer par zero de nouveau
+        # On va écrire sur les anciennes contenue de les clés
+        # Paquets du type: NEW_MESSAGE, NEW_USER, SWITCH_ROOM et LOGOUT
+        # faire une fonction pour ajouter le événement dans la bonne position, dans la bonne forme de packet, incrementer current_event
+        # faire une fonction pour recueillir les événements de first_event to last_event de la liste
+       
+        #Je n'utilise pas encore room_id, mais, je crois que je vais changer
+        
+        n_event = last_event_id + 1
+        get_events_list = b''   
+        real_events_number = 0
+        i = 0
+        end = False
+        while i < nbr_events and not end :
+            i += 1
+            if n_event == self.last_event_ID :
+                get_events_list += self.events_list[n_event]
+                real_events_number = real_events_number + 1
+                end = True
+            elif n_event == 16777215 :
+                get_events_list += self.events_list[n_event]
+                n_event = 0
+                real_events_number = real_events_number + 1
+            else :
+                get_events_list += self.events_list[n_event]
+                n_event = n_event + 1
+                real_events_number = real_events_number + 1    
+        return [get_events_list, real_events_number]
+
+
     def getUsers(self, first_user_id, nbr_users, room_id):
         # l'entrées : le ID du première usager que le client a demandé,
         # le nombre de de usagers et le room où on va chercher
@@ -227,33 +264,54 @@ class c2wTcpChatServerProtocol(Protocol):
 
                 ###########        
                 if user_id in self.seq_number_users :     
-                    print('hahahaha = ',self.seq_number_users[user_id][0] + 1)
                     if seq_number == self.seq_number_users[user_id][0] + 1 : 
                     ########### LOGOUT REQUEST / RESPONSE_LOGOUT
                         if message_type == 0x02 :                                                           # On a reçu le message de logout
-                            if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # On vérifie si il y a le user sur la base de données                        
+                            print('log out')                            
+                            if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName): # On vérifie si il y a le user sur la base de données                        
                                 self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user  "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
                                 self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements                
-                                serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName)      # On supprime le user (On doit faire ça après addEvent)
+                                self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName) # On supprime le user (On doit faire ça après addEvent)
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)                   # On fait le paquet 
                                 self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet "" Je crois qu'il n'y a pas besoin de faire ça un fois que on utilise pas resendResponse
-                                
                                 self.transport.write(packet)
                                 
                             else :                                                                          # Si on a déjà supprimés le user de la base de données
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x00)
                                 self.transport.write(packet)
                                 
-                            if self.serverProxy.userExists(server.Proxy.getUserById(user_id).userName) :    # Si même après avoir supprimé le user, il existe dans la base de données
+                            if self.serverProxy.userExists(self.serverProxy.getUserById(user_id).userName): # Si même après avoir supprimé le user, il existe dans la base de données
                                 packet = packing.RESPONSE_LOGOUT(seq_number,user_id,0x01)                   # On fait le paquet 
-                                self.transport.write(packet)                                                # On envoie le paquet   
+                                self.transport.write(packet)                                                # On envoie le paquet      
 
                     ########### PING REQUEST / RESPONSE_PING
                         if message_type == 0x04 :                                                       # On a reçu le message de get_ping
                             packet = packing.RESPONSE_LOGOUT(seq_number, user_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
                             self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
+                            print('seq number = ',self.seq_number_users[user_id][0])                            
                             self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
                             self.transport.write(packet)      
+
+                    ########### EVENTS REQUEST / RESPONSE_EVENTS
+                        if message_type == 0x06 :                                                       # On a reçu le message de get_events
+                            last_event_id = fieldsList[1][0]                                            # Le premier event que le usager demande
+                            nbr_events = fieldsList[1][1]                                               # Le nombre de events que le usager demande
+                            room_id = fieldsList[1][2]                                                  # La room où le usager demande les events
+                            
+                            getEvents = self.getEvent(last_event_id,room_id,nbr_events)
+                            packet_content = getEvents[0]
+                            print(packet_content)                                            # le packet binaire avec tous les events déjà codé (sans le nbr_events)
+                            real_events_number = getEvents[1]                                            # Le nombre de events qu'on envoie (pas necessairement le celui demandé)
+                            message_length = len(packet_content)                                        # la taille de la message (sans nbr_events, on ajoute ça dans RESPONSE_EVENTS_HEAD)
+                            packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, user_id, real_events_number,message_length) # le packet binaire avec le message head
+                            print(packet_head)
+                            packet = packet_head + packet_content
+                            print(packet)                                                             # On additionne les deux packet binaires
+                            
+                            self.seq_number_users[user_id][0] = self.seq_number_users[user_id][0] + 1   # On incrémente le seq_number du user
+                            self.seq_number_users[user_id][1] = packet                                  # On enregistre le paquet
+                            
+                            self.transport.write(packet)
 
 
                 ########### ROOMS REQUEST / RESPONSE_ROOMS
