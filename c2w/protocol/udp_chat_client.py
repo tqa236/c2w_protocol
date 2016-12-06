@@ -217,18 +217,19 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         This function is used by the chatClientProtocol to get ping from the server
         """
         
-        moduleLogger.debug('Get ping request called')
-        
-        packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
-        print('get_ping :')
-        print(packet)
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        if self.packet_awaited == 16 : #Check if there is an awaited response first, if not start the ping
+            moduleLogger.debug('Get ping request called')
+            packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
+            print('get_ping :')
+            print(packet)
+            self.transport.write(packet, (self.serverAddress, self.serverPort))
 
-        self.packet_stored = packet
-        self.packet_awaited = 5
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
-        
-
+            self.packet_stored = packet
+            self.packet_awaited = 5
+            reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+        else : #If there is, report the ping at a later date (to make sure there is never two requests sent by the client and not answered at once)
+            reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+            
 ########### GET_EVENTS     
     #OK
     def sendGetEventsRequestOIE(self,nbr_events):
@@ -421,8 +422,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 c2wUsers = self.store.getUserList() #get the user list in the appropriate format
                 userList = []
                 for i in range(len(c2wUsers)) :
-                    if c2wUsers[i].userId != self.userID :
-                        userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
+                    userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
                 print(userList)
                 self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
                 print('Room status : UI has been updated')

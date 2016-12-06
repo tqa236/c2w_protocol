@@ -444,7 +444,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     if room_message == 0  :                                                           # Si nous sommes dans la MAIN ROOM
                         room_message = c2w.main.constants.ROOM_IDS.MAIN_ROOM
                     else :
-                        room_message = self.serverProxy.getMovieByTitle(room_message)
+                        room_message = self.serverProxy.getMovieById(room_message).movieTitle
                         
                     if room_message is None :                                                       # Il n'y a pas le movie room dans le système
                         packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x02)          # On fait le paquet                        
