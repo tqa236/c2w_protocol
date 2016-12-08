@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-*
 from twisted.internet.protocol import DatagramProtocol
 import c2w
-from c2w.main.lossy_transport import LossyTransport
 import logging
 logging.basicConfig()
-moduleLogger = logging.getLogger('c2w.protocol.udp_chat_client_protocol')
+moduleLogger = logging.getLogger('c2w.protocol.tcp_chat_client_protocol')
 
 import time
 from c2w.main.constants import ROOM_IDS
@@ -16,22 +15,33 @@ from twisted.internet import reactor
 from c2w.main.client_model import c2wClientModel
 
 
-class c2wUdpChatClientProtocol(DatagramProtocol):
+class c2wTcpChatClientProtocol(DatagramProtocol):
 
-    def __init__(self, serverAddress, serverPort, clientProxy, lossPr):
+    def __init__(self, clientProxy, serverAddress, serverPort):
+
         """
-        :param serverAddress: The IP address (or the name) of the c2w server,
-            given by the user.
-            given by the user.
         :param clientProxy: The clientProxy, which the protocol must use
             to interact with the Graphical User Interface.
+
+        :param serverAddress: The IP address (or the name) of the c2w server,
+            given by the user.
+
+        :param serverPort: The port number used by the c2w server,
+            given by the user.
 
         Class implementing the UDP version of the client protocol.
 
         .. note::
+
             You must write the implementation of this class.
 
-        Each instance must have at least the following attributes:
+        Each instance must have at least the following attribute:
+
+
+        .. attribute:: clientProxy
+
+            The clientProxy, which the protocol must use
+            to interact with the Graphical User Interface.
 
         .. attribute:: serverAddress
 
@@ -39,19 +49,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
         .. attribute:: serverPort
 
-            The port number of the c2w server.
-
-        .. attribute:: clientProxy
-
-            The clientProxy, which the protocol must use
-            to interact with the Graphical User Interface.
-
-        .. attribute:: lossPr
-
-            The packet loss probability for outgoing packets.  Do
-            not modify this value!  (It is used by startProtocol.)
+            The port number used by the c2w server.
 
         .. note::
+
             You must add attributes and methods to this class in order
             to have a working and complete implementation of the c2w
             protocol.
@@ -59,58 +60,26 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
 
         #: The IP address of the c2w server.
         self.serverAddress = serverAddress
-        #: The port number of the c2w server.
+        #: The port number used by the c2w server.
         self.serverPort = serverPort
         #: The clientProxy, which the protocol must use
         #: to interact with the Graphical User Interface.
         self.clientProxy = clientProxy
-        self.lossPr = lossPr
-        
+s
         self.seq_number = 0 #This variable contains the sequence number used to track packet loss
         self.userID = 0 #This vatiable contains the id of the client that was set by the server (initially set to 0)
         self.lastEventID = 0 #This variable contains the id of the last event the client is currently aware of.
         self.userRoomID = 0 #This variable contains the room the client is currently in.
         self.futureRoomID = 0 #This variable contains the room the client want to switch to
-        self.entry_number_awaited = 0 #This variable contains the number of entry the client is expecting from the next multi-entry response
         
-        self.packet_stored = 0 #This variable contains a packet to be resent if its answer is not received. When it is equals to 0 there is no packet to resend.
         self.packet_awaited = 16 #This variable contains the type of the next packet to be received. When it is equals to 16 there is no packet to be received.
               
         self.store = c2wClientModel() #The c2wClientModel is a class used to store all data about users and movies
         
-        self.delay = 0.5 #The length of the timer that is armed whenever the client send a request. When it runs out the client resend the message if no answer was given.
         self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
-        self.resendTries = 0 #The number of times the resend function has resent the message
         self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
         
         
-    def startProtocol(self):
-        """one_user_full_login_udp_server_test
-        DO NOT MODIFY THE FIRST TWO LINES OF THIS METHOD!!
-
-        If in doubt, do not add anything to this method.  Just ignore it.
-        It is used to randomly drop outgoing packets if the -l
-        command line option is used.packet_stor
-        """
-        self.transport = LossyTransport(self.transport, self.lossPr)
-        DatagramProtocol.transport = self.transport
-
-
-########### The function that resends packets whenever the timer runs out.
-    #OK
-    def resend_packet(self, seq_number):
-        if self.packet_awaited != 16 and self.packet_stored != 0 and self.seq_number == seq_number: #Check if there is a packet to be resent
-            if self.resendTries < 10 :
-                print('resending :')
-                print(self.packet_stored)
-                self.transport.write(self.packet_stored, (self.serverAddress, self.serverPort))
-                self.resendTries += 1
-                reactor.callLater(self.delay, self.resend_packet, seq_number)
-            else :
-                self.clientProxy.applicationQuit()
-                              
-
-
 ########### PUT_LOGIN  
     #OK
     def sendLoginRequestOIE(self, userName):
@@ -125,11 +94,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_LOGIN(self.seq_number,userName)    
         print('login :')
         print(packet)
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
         
         self.packet_stored = packet
         self.packet_awaited = 1
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
 ########### PUT_NEW_MESSAGE    
@@ -154,11 +122,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_NEW_MESSAGE(self.seq_number,self.userID,self.userRoomID,message)
         print('new message :')
         print(packet)     
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
         
         self.packet_stored = packet
         self.packet_awaited = 15
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_SWITCH_ROOM     
@@ -183,11 +150,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)
         print('put switch room :')
         print(packet)    
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
         
         self.packet_stored = packet
         self.packet_awaited = 13
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### PUT_LOGOUT     
@@ -203,11 +169,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.PUT_LOGOUT(self.seq_number,self.userID)
         print('logout :')
         print(packet)      
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
 
         self.packet_stored = packet
         self.packet_awaited = 3
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
         
 
 ########### GET_PING     
@@ -222,11 +187,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             packet = packing.GET_PING(self.seq_number,self.userID,self.lastEventID,self.userRoomID)      
             print('get_ping :')
             print(packet)
-            self.transport.write(packet, (self.serverAddress, self.serverPort))
-
+            self.transport.write(packet)
             self.packet_stored = packet
             self.packet_awaited = 5
-            reactor.callLater(self.delay, self.resend_packet, self.seq_number)
+
         else : #If there is, report the ping at a later date (to make sure there is never two requests sent by the client and not answered at once)
             reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
             
@@ -241,11 +205,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_EVENTS(self.seq_number, self.userID, self.lastEventID, nbr_events, 0)
         print('get events :')
         print(packet)
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
 
         self.packet_stored = packet
         self.packet_awaited = 7
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 
 ########### GET_ROOMS   
@@ -259,11 +222,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         print('get rooms :')
         print(packet)
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
 
         self.packet_stored = packet
         self.packet_awaited = 9
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
 
 ########### GET_USERS    
     #OK
@@ -276,11 +238,10 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         packet = packing.GET_USERS(self.seq_number, self.userID, first_user_id, nbr_users, self.userRoomID)      
         print('get_users :')
         print(packet)
-        self.transport.write(packet, (self.serverAddress, self.serverPort))
+        self.transport.write(packet)
 
         self.packet_stored = packet
         self.packet_awaited = 11
-        reactor.callLater(self.delay, self.resend_packet, self.seq_number)
                 
 
 ###########      
@@ -294,18 +255,22 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         Called **by Twisted** when the client has received a UDP
         packet.
         """
-
+        
+        print('data received')
         self.frame = self.frame + data
+        print(self.frame)
         complet, longueur = tcp_reception.framing(self.frame)
         if complet :
-            datagram = self.frame[:longueur] # the entire message
+            datagram = self.frame[:longueur] # the entire buffer
+            print('packet_received')
             fieldsList = unpacking.decode(datagram)
             print(fieldsList)
-            self.frame = self.frame[longueur:] # the rest of the message
+            self.frame = self.frame[longueur:] # delete from the buffer the part that was already decoded
             self.seq_number += 1
+            self.packet_awaited = 16
             
             moduleLogger.debug('Expected response received, decoding...')
-            ########### RESPONSE_LOGIN OK
+            ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
                 print('login resp rec')
                 if fieldsList[1][0] == 0 :                    
