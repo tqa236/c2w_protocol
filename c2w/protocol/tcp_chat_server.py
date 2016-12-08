@@ -283,6 +283,8 @@ s
         """
         
         self.frame = self.frame + data
+        
+        complet = False
         complet, longueur = tcp_reception.framing(self.frame)
         if complet :
             datagram = self.frame[:longueur] # the entire message
