@@ -10,6 +10,7 @@ from c2w.main.constants import ROOM_IDS
 
 from . import unpacking
 from . import packing
+from . import tcp_reception
 
 from twisted.internet import reactor
 from c2w.main.client_model import c2wClientModel
@@ -64,9 +65,9 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
         self.serverPort = serverPort
         #: The clientProxy, which the protocol must use
         #: to interact with the Graphical User Interface.
+        self.frame = b'' #The buffer where all the data received but not decoded yet is stocked
         self.clientProxy = clientProxy
-s
-        self.seq_number = 0 #This variable contains the sequence number used to track packet loss
+        self.seq_number = 0 #This variable contains the sequence number used to send packet
         self.userID = 0 #This vatiable contains the id of the client that was set by the server (initially set to 0)
         self.lastEventID = 0 #This variable contains the id of the last event the client is currently aware of.
         self.userRoomID = 0 #This variable contains the room the client is currently in.
@@ -79,7 +80,15 @@ s
         self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
         self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
         
-        
+
+
+    def connectionLost(self, reason) :
+        """
+        The connection with the server was lost  because of the reason given in arg
+        """
+        print('connection lost : ' + str(reason))
+
+
 ########### PUT_LOGIN  
     #OK
     def sendLoginRequestOIE(self, userName):
@@ -246,17 +255,17 @@ s
 
 ###########      
                
-    def datagramReceived(self, datagram, host_port):
-
+    def dataReceived(self, data):
         """
-        :param string datagram: the payload of the UDP packet.
-        :param host_port: a touple containing the source IP address and port.
+        :param data: The data received from the server (not necessarily
+                     an entire message!)
 
-        Called **by Twisted** when the client has received a UDP
-        packet.
+        Twisted calls this method whenever new data is received on this
+        connection.
         """
         
         print('data received')
+        print(self.frame)
         self.frame = self.frame + data
         print(self.frame)
         complet, longueur = tcp_reception.framing(self.frame)
@@ -268,6 +277,8 @@ s
             self.frame = self.frame[longueur:] # delete from the buffer the part that was already decoded
             self.seq_number += 1
             self.packet_awaited = 16
+            if len(self.frame) >= 6 : #If there is at least a new message's header received as well, call later the whole method to deal with it.
+                reactor.callLater(0.5, self.dataReceived, b'') 
             
             moduleLogger.debug('Expected response received, decoding...')
             ########### RESPONSE_LOGIN

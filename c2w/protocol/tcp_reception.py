@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import struct 
 
-def framing(frame, data) :
+def framing(frame) :
     if len(frame) >= 6:
         header = frame[:6]
         messageInfo = struct.unpack('!BHBH', header)
