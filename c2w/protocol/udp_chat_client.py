@@ -81,6 +81,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         self.delay = 0.5 #The length of the timer that is armed whenever the client send a request. When it runs out the client resend the message if no answer was given.
         self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
         self.resendTries = 0 #The number of times the resend function has resent the message
+        self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
         
         
     def startProtocol(self):
@@ -93,7 +94,6 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
-        self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
 
 
 ########### The function that resends packets whenever the timer runs out.
