@@ -72,6 +72,7 @@ class c2wTcpChatClientProtocol(Protocol):
         self.userRoomID = 0 #This variable contains the room the client is currently in.
         self.entry_number_awaited = 0 #This variable contains the number of entry the client is expecting from the next multi-entry response
         self.store = c2wClientModel() #The c2wClientModel is a class used to store all data about users and movies
+        self.pingTimer = 1 #The time to wait before sending a ping after having received last pong
 
     def sendLoginRequestOIE(self, userName):
         """
@@ -119,11 +120,13 @@ class c2wTcpChatClientProtocol(Protocol):
         """
         
         moduleLogger.debug('Join Room request called with room name = %s', roomName)
-        
-        self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
-        print('put switch room :')
-        print(packet)
+        if self.store.getMovieByTitle(roomName) is None:
+            self.futureRoomID = 0            
+        else:        
+            self.futureRoomID = self.store.getMovieByTitle(roomName).movieId
         packet = packing.PUT_SWITCH_ROOM(self.seq_number, self.userID, self.futureRoomID)      
+        print('put switch room :')
+        print(packet)        
         self.transport.write(packet)
 
 ########### PUT_LOGOUT     
@@ -179,7 +182,6 @@ class c2wTcpChatClientProtocol(Protocol):
         """
         
         moduleLogger.debug('Get rooms request called')
-        print('hahaha = ',self.seq_number)
         self.entry_number_awaited = nbr_rooms
         packet = packing.GET_ROOMS(self.seq_number, self.userID, first_room_id, nbr_rooms)      
         self.transport.write(packet)
@@ -235,19 +237,81 @@ class c2wTcpChatClientProtocol(Protocol):
                         self.clientProxy.connectionRejectedONE('Username not available')
                         moduleLogger.debug('Login status : Username not available')
 
+                ########### RESPONSE_LOGOUT                
+                if fieldsList[0][0] == 3 :
+                    print('logout resp rec')
+                    self.userID = 0
+                    self.lastEventID = 0
+                    self.seq_number = 0
+                    self.packet_stored = 0
+                    self.packet_awaited = 16
+                    self.store.removeAllMovies()
+                    self.store.removeAllUsers()
+                    self.clientProxy.leaveSystemOKONE()
+                    moduleLogger.debug('Logout status : Done')
+                
+                        
+
                 ########### RESPONSE_PING
                 elif fieldsList[0][0] == 5 :
                     print('ping resp rec')
                     lastServerEventID = fieldsList[1][0]
                     if self.lastEventID != lastServerEventID :
                         moduleLogger.debug('Ping status : Not up-to-date, getting events required')
-                        self.sendGetEventsRequestOIE(lastServerEventID - lastEventID)
+                        self.sendGetEventsRequestOIE(lastServerEventID - self.lastEventID)
                         
                     else :
                         moduleLogger.debug('Ping status : up-to-date, preparing next ping')
                         reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
                         
-            
+
+          
+                ########### RESPONSE_EVENTS        
+                elif fieldsList[0][0] == 7 :
+                    print('events resp rec')
+                    for i in range(len(fieldsList[1])):
+                        if fieldsList[1][i][1] == 1 : #Message event
+                            print('message !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            user = self.store.getUserById(fieldsList[1][i][3])
+                            print(user)
+                            if user.userChatRoom == self.userRoomID and user.userId != self.userID:
+                                self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
+                                print(fieldsList[1][i][4])
+                            
+                        elif fieldsList[1][i][1] == 2 : #New user event
+                            print('newser !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            room = self.store.getMovieById(fieldsList[1][i][2])
+                            self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room.movieId)
+                            self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room.movieTitle)
+                            moduleLogger.debug('GetEvents status : New user')
+                            
+                        elif fieldsList[1][i][1] == 3 : #Switch room event
+                            print('switchi !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            name = self.store.getUserById(fieldsList[1][i][3]).userName
+                            room = self.store.getMovieById(fieldsList[1][i][4]).movieTitle
+                            self.store.updateUserChatroom(name, fieldsList[1][i][4])
+                            self.clientProxy.userUpdateReceivedONE(name, room)
+                            moduleLogger.debug('GetEvent status : User switched room')
+                        
+                        elif fieldsList[1][i][1] == 4 : #Logout event
+                            print('disco !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            name = self.store.getUserById(fieldsList[1][i][3]).userName
+                            self.store.removeUser(name)
+                            self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
+                            moduleLogger.debug('GetEvent status : User logged out')
+                            
+                    print('GetEvent status : up-to-date, preparing next ping')
+                    reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                        
+                            
 
 
                 ########### RESPONSE_ROOMS
@@ -304,6 +368,32 @@ class c2wTcpChatClientProtocol(Protocol):
                         moduleLogger.debug('Users status : Users list fully updated, asking for rooms')
                         self.sendGetRoomsRequestOIE(1, 255)                        
 
+       ########### RESPONSE_SWITCH_ROOM
+                elif fieldsList[0][0] == 13 :
+                    print('switch resp rec')
+                    if fieldsList[1][0] == 0 :
+                        self.clientProxy.joinRoomOKONE()
+                        self.userRoomID = self.futureRoomID
+                        print('Switch room status : Done')
+                    elif fieldsList[1][0] == 1 :
+                        print('Switch room status : Unknow error')
+                
+                
+                ########### RESPONSE_NEW_MESSAGE
+                elif fieldsList[0][0] == 15 :
+                    print('new message resp rec')
+                    if fieldsList[1][0] == 0 :
+                        print('Message status : transmitted')
+                    elif fieldsList[1][0] == 1 :
+                        print('Message status : Unknown error')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Unknown error')
+                    elif fieldsList[1][0] == 2 :
+                        print('Message status : Invalid room')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Invalid room')
+                    elif fieldsList[1][0] == 3 :
+                        print('Message status : Incorrect room (You must send a message only into your current room)')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Incorrect room (You must send a message only into your current room)')             
 
+    ###########
 
-                    
+                        
