@@ -155,11 +155,8 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         
     def lostResponse(self,user_id,seq_number, key):
 
-        if key in self.seq_number_users :         
-            key_seq = seq_number == self.seq_number_users[key][0]
-            key_id = user_id == self.seq_number_users[key][2]            
-            
-            if key_seq and key_id :
+        if key in self.seq_number_users :
+            if seq_number == self.seq_number_users[key][0] :
                 packet = self.seq_number_users[key][1]
                 resend = True
             else :
@@ -289,6 +286,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         packet.  You cannot change the signature of this method.
         """
         
+        print(datagram)
         fieldsList = unpacking.decode(datagram)
         
         message_type = fieldsList[0][0]
