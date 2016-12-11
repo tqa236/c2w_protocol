@@ -264,25 +264,23 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
         connection.
         """
         
-        print('data received')
+        print('Data received')
         self.frame = self.frame + data
-        print(self.frame)
         complet, longueur = tcp_reception.framing(self.frame)
         if complet :
-            datagram = self.frame[:longueur] # the entire buffer
-            print('packet_received')
+            datagram = self.frame[:longueur] #The datagram received is of this length according to the header
+            print('A full packet has been received :')
             fieldsList = unpacking.decode(datagram)
             print(fieldsList)
-            self.frame = self.frame[longueur:] # delete from the buffer the part that was already decoded
+            self.frame = self.frame[longueur:] #After decoding the datagram, we delete it from the buffer
             self.seq_number += 1
-            self.packet_awaited = 16
-            if len(self.frame) >= 6 : #If there is at least a new message's header received as well, call later the whole method to deal with it.
-                reactor.callLater(0.5, self.dataReceived, b'') 
+            self.packet_awaited = 16 #Set the packet_awaited to 16, allowing pings.
+            if len(self.frame) >= 6 : #Failsafe condition, in the case of multiple packet arriving at once..
+                reactor.callLater(0.5, self.dataReceived, b'')
             
-            moduleLogger.debug('Expected response received, decoding...')
             ########### RESPONSE_LOGIN
             if fieldsList[0][0] == 1 :          
-                print('login resp rec')
+                print('Received the login response...')
                 if fieldsList[1][0] == 0 :                    
                     print('Login status : Done')
                     self.userID = fieldsList[1][1]
@@ -304,7 +302,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                                      
             ########### RESPONSE_LOGOUT                
             if fieldsList[0][0] == 3 :
-                print('logout resp rec')
+                print('Received the logout response...')
                 self.userID = 0
                 self.lastEventID = 0
                 self.seq_number = 0
@@ -318,7 +316,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                     
             ########### RESPONSE_PING
             elif fieldsList[0][0] == 5 :
-                print('ping resp rec')
+                print('Received the ping response...')
                 lastServerEventID = fieldsList[1][0]
                 if self.lastEventID != lastServerEventID :
                     print('Ping status : Not up-to-date, getting events required')
@@ -332,10 +330,10 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                 
             ########### RESPONSE_EVENTS        
             elif fieldsList[0][0] == 7 :
-                print('events resp rec')
+                print('Received the get_events response...')
                 for i in range(len(fieldsList[1])):
                     if fieldsList[1][i][1] == 1 : #Message event
-                        print('message !')
+                        print('Message event received !')
                         self.lastEventID = fieldsList[1][i][0]
                         
                         user = self.store.getUserById(fieldsList[1][i][3])
@@ -345,7 +343,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                             print(fieldsList[1][i][4])
                         
                     elif fieldsList[1][i][1] == 2 : #New user event
-                        print('newser !')
+                        print('A new user has been added !')
                         self.lastEventID = fieldsList[1][i][0]
                         
                         room = self.store.getMovieById(fieldsList[1][i][2])
@@ -354,7 +352,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                         moduleLogger.debug('GetEvents status : New user')
                         
                     elif fieldsList[1][i][1] == 3 : #Switch room event
-                        print('switchi !')
+                        print('A user switched room')
                         self.lastEventID = fieldsList[1][i][0]
                         
                         name = self.store.getUserById(fieldsList[1][i][3]).userName
@@ -364,7 +362,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                         moduleLogger.debug('GetEvent status : User switched room')
                     
                     elif fieldsList[1][i][1] == 4 : #Logout event
-                        print('disco !')
+                        print('A user disconnected !')
                         self.lastEventID = fieldsList[1][i][0]
                         
                         name = self.store.getUserById(fieldsList[1][i][3]).userName
@@ -379,7 +377,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                     
             ########### RESPONSE_ROOMS
             elif fieldsList[0][0] == 9 :
-                print('rooms resp rec')
+                print('Received the get_room response...')
                 #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
                 #AddMovie accepts it in the following form : Title, IP, Port, ID 
                 moduleLogger.debug('Room status : Rooms list received')
@@ -393,7 +391,6 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                     if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
                         movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
                 c2wUsers = self.store.getUserList() #get the user list in the appropriate format
-                print("###########################")
                 print(c2wUsers)
                 userList = []
                 for i in range(len(c2wUsers)) :
@@ -409,13 +406,11 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
 
             ########### RESPONSE_USERS
             elif fieldsList[0][0] == 11 :
-                print('users resp rec')
+                print('Received the get_user response...')
                 #FieldsList returns the data in the following form : user_id, user_name, room_id
                 #AddUser accepts it in the following form : Name, ID, Chatroom
                 moduleLogger.debug('Users status : Users list received')
-                print(fieldsList)
                 for i in range(len(fieldsList[1])):
-                    print("AAA")
                     if not self.store.userExists(fieldsList[1][i][1]) :
                         self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
                         
@@ -425,7 +420,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                 
             ########### RESPONSE_SWITCH_ROOM
             elif fieldsList[0][0] == 13 :
-                print('switch resp rec')
+                print('Received the switch room response...')
                 if fieldsList[1][0] == 0 :
                     self.clientProxy.joinRoomOKONE()
                     self.userRoomID = self.futureRoomID
@@ -436,7 +431,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
             
             ########### RESPONSE_NEW_MESSAGE
             elif fieldsList[0][0] == 15 :
-                print('new message resp rec')
+                print('Received the put_new_message response')
                 if fieldsList[1][0] == 0 :
                     print('Message status : transmitted')
                 elif fieldsList[1][0] == 1 :
