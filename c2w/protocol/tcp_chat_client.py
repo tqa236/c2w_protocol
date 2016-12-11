@@ -273,175 +273,174 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
             fieldsList = unpacking.decode(datagram)
             print(fieldsList)
             self.frame = self.frame[longueur:] #After decoding the datagram, we delete it from the buffer
-            self.seq_number += 1
-            self.packet_awaited = 16 #Set the packet_awaited to 16, allowing pings.
             if len(self.frame) >= 6 : #Failsafe condition, in the case of multiple packet arriving at once..
                 reactor.callLater(0.5, self.dataReceived, b'')
-            
-            ########### RESPONSE_LOGIN
-            if fieldsList[0][0] == 1 :          
-                print('Received the login response...')
-                if fieldsList[1][0] == 0 :                    
-                    print('Login status : Done')
-                    self.userID = fieldsList[1][1]
-                    self.lastEventID = fieldsList[1][2]
-                    self.sendGetUsersRequestOIE(1, 255)
-                elif fieldsList[1][0] == 1 :
-                    self.clientProxy.connectionRejectedONE('Unknow error')
-                    print('Login status : Unknown error')
-                elif fieldsList[1][0] == 2 :
-                    self.clientProxy.connectionRejectedONE('Too many users')
-                    print('Login status : Too many users')
-                elif fieldsList[1][0] == 3 :
-                    self.clientProxy.connectionRejectedONE('Invalid username')
-                    print('Login status : Invalid username')
-                elif fieldsList[1][0] == 4 :
-                    self.clientProxy.connectionRejectedONE('Username not available')
-                    print('Login status : Username not available')
-            
-                                     
-            ########### RESPONSE_LOGOUT                
-            if fieldsList[0][0] == 3 :
-                print('Received the logout response...')
-                self.userID = 0
-                self.lastEventID = 0
-                self.seq_number = 0
-                self.packet_stored = 0
+            if fieldsList[0][0] == self.packet_awaited and fieldsList[0][1] == self.seq_number : #Failsafe condition, in the case of packet arriving in incorrect order
                 self.packet_awaited = 16
-                self.store.removeAllMovies()
-                self.store.removeAllUsers()
-                self.clientProxy.leaveSystemOKONE()
-                moduleLogger.debug('Logout status : Done')
-            
+                self.seq_number += 1
+                
+                ########### RESPONSE_LOGIN
+                if fieldsList[0][0] == 1 :          
+                    print('Received the login response...')
+                    if fieldsList[1][0] == 0 :                    
+                        print('Login status : Done')
+                        self.userID = fieldsList[1][1]
+                        self.lastEventID = fieldsList[1][2]
+                        self.sendGetUsersRequestOIE(1, 255)
+                    elif fieldsList[1][0] == 1 :
+                        self.clientProxy.connectionRejectedONE('Unknow error')
+                        print('Login status : Unknown error')
+                    elif fieldsList[1][0] == 2 :
+                        self.clientProxy.connectionRejectedONE('Too many users')
+                        print('Login status : Too many users')
+                    elif fieldsList[1][0] == 3 :
+                        self.clientProxy.connectionRejectedONE('Invalid username')
+                        print('Login status : Invalid username')
+                    elif fieldsList[1][0] == 4 :
+                        self.clientProxy.connectionRejectedONE('Username not available')
+                        print('Login status : Username not available')
+                
+                                         
+                ########### RESPONSE_LOGOUT                
+                if fieldsList[0][0] == 3 :
+                    print('Received the logout response...')
+                    self.userID = 0
+                    self.lastEventID = 0
+                    self.seq_number = 0
+                    self.packet_stored = 0
+                    self.packet_awaited = 16
+                    self.store.removeAllMovies()
+                    self.store.removeAllUsers()
+                    self.clientProxy.leaveSystemOKONE()
+                    moduleLogger.debug('Logout status : Done')
+                
+                        
+                ########### RESPONSE_PING
+                elif fieldsList[0][0] == 5 :
+                    print('Received the ping response...')
+                    lastServerEventID = fieldsList[1][0]
+                    if self.lastEventID != lastServerEventID :
+                        print('Ping status : Not up-to-date, getting events required')
+                        self.sendGetEventsRequestOIE(lastServerEventID - self.lastEventID)
+                        
+                    else :
+                        print('Ping status : up-to-date, preparing next ping')
+                        reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
+                        
+                
                     
-            ########### RESPONSE_PING
-            elif fieldsList[0][0] == 5 :
-                print('Received the ping response...')
-                lastServerEventID = fieldsList[1][0]
-                if self.lastEventID != lastServerEventID :
-                    print('Ping status : Not up-to-date, getting events required')
-                    self.sendGetEventsRequestOIE(lastServerEventID - self.lastEventID)
-                    
-                else :
-                    print('Ping status : up-to-date, preparing next ping')
+                ########### RESPONSE_EVENTS        
+                elif fieldsList[0][0] == 7 :
+                    print('Received the get_events response...')
+                    for i in range(len(fieldsList[1])):
+                        if fieldsList[1][i][1] == 1 : #Message event
+                            print('Message event received !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            user = self.store.getUserById(fieldsList[1][i][3])
+                            if user.userChatRoom == self.userRoomID and user.userId != self.userID:
+                                self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
+                            
+                        elif fieldsList[1][i][1] == 2 : #New user event
+                            print('A new user has been added !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            room = self.store.getMovieById(fieldsList[1][i][2])
+                            self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room.movieId)
+                            self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room.movieTitle)
+                            moduleLogger.debug('GetEvents status : New user')
+                            
+                        elif fieldsList[1][i][1] == 3 : #Switch room event
+                            print('A user switched room')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            name = self.store.getUserById(fieldsList[1][i][3]).userName
+                            room = self.store.getMovieById(fieldsList[1][i][4]).movieTitle
+                            self.store.updateUserChatroom(name, fieldsList[1][i][4])
+                            self.clientProxy.userUpdateReceivedONE(name, room)
+                            moduleLogger.debug('GetEvent status : User switched room')
+                        
+                        elif fieldsList[1][i][1] == 4 : #Logout event
+                            print('A user disconnected !')
+                            self.lastEventID = fieldsList[1][i][0]
+                            
+                            name = self.store.getUserById(fieldsList[1][i][3]).userName
+                            self.store.removeUser(name)
+                            self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
+                            moduleLogger.debug('GetEvent status : User logged out')
+                            
+                    print('GetEvent status : up-to-date, preparing next ping')
                     reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
-                    
-            
+                        
                 
-            ########### RESPONSE_EVENTS        
-            elif fieldsList[0][0] == 7 :
-                print('Received the get_events response...')
-                for i in range(len(fieldsList[1])):
-                    if fieldsList[1][i][1] == 1 : #Message event
-                        print('Message event received !')
-                        self.lastEventID = fieldsList[1][i][0]
                         
-                        user = self.store.getUserById(fieldsList[1][i][3])
-                        print(user)
-                        if user.userChatRoom == self.userRoomID and user.userId != self.userID:
-                            self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
-                            print(fieldsList[1][i][4])
-                        
-                    elif fieldsList[1][i][1] == 2 : #New user event
-                        print('A new user has been added !')
-                        self.lastEventID = fieldsList[1][i][0]
-                        
-                        room = self.store.getMovieById(fieldsList[1][i][2])
-                        self.store.addUser(fieldsList[1][i][4], fieldsList[1][i][3], room.movieId)
-                        self.clientProxy.userUpdateReceivedONE(fieldsList[1][i][4], room.movieTitle)
-                        moduleLogger.debug('GetEvents status : New user')
-                        
-                    elif fieldsList[1][i][1] == 3 : #Switch room event
-                        print('A user switched room')
-                        self.lastEventID = fieldsList[1][i][0]
-                        
-                        name = self.store.getUserById(fieldsList[1][i][3]).userName
-                        room = self.store.getMovieById(fieldsList[1][i][4]).movieTitle
-                        self.store.updateUserChatroom(name, fieldsList[1][i][4])
-                        self.clientProxy.userUpdateReceivedONE(name, room)
-                        moduleLogger.debug('GetEvent status : User switched room')
+                ########### RESPONSE_ROOMS
+                elif fieldsList[0][0] == 9 :
+                    print('Received the get_room response...')
+                    #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
+                    #AddMovie accepts it in the following form : Title, IP, Port, ID 
+                    moduleLogger.debug('Room status : Rooms list received')
+                    for i in range(len(fieldsList[1])):
+                        if self.store.getMovieById(fieldsList[1][i][0]) is None :   
+                            self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
                     
-                    elif fieldsList[1][i][1] == 4 : #Logout event
-                        print('A user disconnected !')
-                        self.lastEventID = fieldsList[1][i][0]
+                    c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
+                    movieList = []
+                    for i in range(len(c2wMovies)) :
+                        if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
+                            movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
+                    c2wUsers = self.store.getUserList() #get the user list in the appropriate format
+                    print(c2wUsers)
+                    userList = []
+                    for i in range(len(c2wUsers)) :
+                        userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
+                    print(userList)
+                    self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
+                    print('Room status : UI has been updated')
+                    
+                    print('Room status : UI is ready, starting ping cycle')
+                    reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE) #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
                         
-                        name = self.store.getUserById(fieldsList[1][i][3]).userName
-                        self.store.removeUser(name)
-                        self.clientProxy.userUpdateReceivedONE(name, ROOM_IDS.OUT_OF_THE_SYSTEM_ROOM)
-                        moduleLogger.debug('GetEvent status : User logged out')
-                        
-                print('GetEvent status : up-to-date, preparing next ping')
-                reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE)
-                    
-            
-                    
-            ########### RESPONSE_ROOMS
-            elif fieldsList[0][0] == 9 :
-                print('Received the get_room response...')
-                #FieldsList returns the data in the following form : Room_id, IP, Port, Room_name, Nbr_users
-                #AddMovie accepts it in the following form : Title, IP, Port, ID 
-                moduleLogger.debug('Room status : Rooms list received')
-                for i in range(len(fieldsList[1])):
-                    if self.store.getMovieById(fieldsList[1][i][0]) is None :   
-                        self.store.addMovie(fieldsList[1][i][3], fieldsList[1][i][1], fieldsList[1][i][2], fieldsList[1][i][0])
-                
-                c2wMovies = self.store.getMovieList() #get the movie list in the appropriate format
-                movieList = []
-                for i in range(len(c2wMovies)) :
-                    if c2wMovies[i].movieTitle != ROOM_IDS.MAIN_ROOM :
-                        movieList.append((c2wMovies[i].movieTitle, c2wMovies[i].movieIpAddress, c2wMovies[i].moviePort))
-                c2wUsers = self.store.getUserList() #get the user list in the appropriate format
-                print(c2wUsers)
-                userList = []
-                for i in range(len(c2wUsers)) :
-                    userList.append((c2wUsers[i].userName, self.store.getMovieById(c2wUsers[i].userChatRoom).movieTitle))
-                print(userList)
-                self.clientProxy.initCompleteONE(userList, movieList) #send both to the UI
-                print('Room status : UI has been updated')
-                
-                print('Room status : UI is ready, starting ping cycle')
-                reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE) #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
-                    
-                                   
+                                       
 
-            ########### RESPONSE_USERS
-            elif fieldsList[0][0] == 11 :
-                print('Received the get_user response...')
-                #FieldsList returns the data in the following form : user_id, user_name, room_id
-                #AddUser accepts it in the following form : Name, ID, Chatroom
-                moduleLogger.debug('Users status : Users list received')
-                for i in range(len(fieldsList[1])):
-                    if not self.store.userExists(fieldsList[1][i][1]) :
-                        self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
-                        
-                print('Users status : Users list fully updated, asking for rooms')
-                self.sendGetRoomsRequestOIE(1, 255)
-            
+                ########### RESPONSE_USERS
+                elif fieldsList[0][0] == 11 :
+                    print('Received the get_user response...')
+                    #FieldsList returns the data in the following form : user_id, user_name, room_id
+                    #AddUser accepts it in the following form : Name, ID, Chatroom
+                    moduleLogger.debug('Users status : Users list received')
+                    for i in range(len(fieldsList[1])):
+                        if not self.store.userExists(fieldsList[1][i][1]) :
+                            self.store.addUser(fieldsList[1][i][1], fieldsList[1][i][0], fieldsList[1][i][2])
+                            
+                    print('Users status : Users list fully updated, asking for rooms')
+                    self.sendGetRoomsRequestOIE(1, 255)
                 
-            ########### RESPONSE_SWITCH_ROOM
-            elif fieldsList[0][0] == 13 :
-                print('Received the switch room response...')
-                if fieldsList[1][0] == 0 :
-                    self.clientProxy.joinRoomOKONE()
-                    self.userRoomID = self.futureRoomID
-                    print('Switch room status : Done')
-                elif fieldsList[1][0] == 1 :
-                    print('Switch room status : Unknown error')
-            
-            
-            ########### RESPONSE_NEW_MESSAGE
-            elif fieldsList[0][0] == 15 :
-                print('Received the put_new_message response')
-                if fieldsList[1][0] == 0 :
-                    print('Message status : transmitted')
-                elif fieldsList[1][0] == 1 :
-                    print('Message status : Unknown error')
-                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Unknown error')
-                elif fieldsList[1][0] == 2 :
-                    print('Message status : Invalid room')
-                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Invalid room')
-                elif fieldsList[1][0] == 3 :
-                    print('Message status : Incorrect room (You must send a message only into your current room)')
-                    self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Incorrect room (You must send a message only into your current room)')             
+                    
+                ########### RESPONSE_SWITCH_ROOM
+                elif fieldsList[0][0] == 13 :
+                    print('Received the switch room response...')
+                    if fieldsList[1][0] == 0 :
+                        self.clientProxy.joinRoomOKONE()
+                        self.userRoomID = self.futureRoomID
+                        print('Switch room status : Done')
+                    elif fieldsList[1][0] == 1 :
+                        print('Switch room status : Unknown error')
+                
+                
+                ########### RESPONSE_NEW_MESSAGE
+                elif fieldsList[0][0] == 15 :
+                    print('Received the put_new_message response')
+                    if fieldsList[1][0] == 0 :
+                        print('Message status : transmitted')
+                    elif fieldsList[1][0] == 1 :
+                        print('Message status : Unknown error')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Unknown error')
+                    elif fieldsList[1][0] == 2 :
+                        print('Message status : Invalid room')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Invalid room')
+                    elif fieldsList[1][0] == 3 :
+                        print('Message status : Incorrect room (You must send a message only into your current room)')
+                        self.clientProxy.chatMessageReceivedONE('Server', 'Message status : Incorrect room (You must send a message only into your current room)')             
 
 ###########
