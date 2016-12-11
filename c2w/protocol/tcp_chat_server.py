@@ -428,21 +428,21 @@ s
                         if  self.serverProxy.getMovieById(new_room) is not None :  
                             new_room_title = self.serverProxy.getMovieById(new_room).movieTitle
                         else : 
-                            new_room_title = None
+                            new_room_title = ''
                         
                     if old_room == c2w.main.constants.ROOM_IDS.MAIN_ROOM :
                         old_room = 0
                     else :
                         old_room = self.serverProxy.getMovieByTitle(old_room).movieId
                     
-                    if new_room_title != c2w.main.constants.ROOM_IDS.MAIN_ROOM or new_room_title is None :
+                    if new_room_title == '' :
                         # Il existe pas le movie room (manque le bon code)                        
                         packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)        # On fait le paquet 
                     
                     else :                                                                     # S'il existe la room dans le système 
-                        self.serverProxy.updateUserChatroom(username, new_room)                 # On met à jour la room
+                        self.serverProxy.updateUserChatroom(username, new_room_title)                 # On met à jour la room
                     
-                        if new_room == self.serverProxy.getUserById(user_id).userChatRoom :     # On a bien mis à jour la room
+                        if new_room_title == self.serverProxy.getUserById(user_id).userChatRoom :     # On a bien mis à jour la room
                             self.addEvent(0x03, user_id, old_room)                              # On ajoute à les events     
                             packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x00)    # On fait le paquet
                         else :

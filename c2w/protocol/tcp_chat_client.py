@@ -265,7 +265,6 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
         """
         
         print('data received')
-        print(self.frame)
         self.frame = self.frame + data
         print(self.frame)
         complet, longueur = tcp_reception.framing(self.frame)
@@ -432,7 +431,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                     self.userRoomID = self.futureRoomID
                     print('Switch room status : Done')
                 elif fieldsList[1][0] == 1 :
-                    print('Switch room status : Unknow error')
+                    print('Switch room status : Unknown error')
             
             
             ########### RESPONSE_NEW_MESSAGE
