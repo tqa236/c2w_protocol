@@ -13,7 +13,7 @@ def PUT_LOGIN(seq_number, username):
 
     message_type = 0
     user_id = 0
-    UL = len(username)
+    UL = len(username.encode('utf-8'))
     message_length = 1 + UL
     
     code = '!BHBH' + 'B' + str(UL) + 's'
@@ -27,8 +27,8 @@ def RESPONSE_LOGIN(seq_number, user_id, username, last_event, status_code):
     message_type = 1
     server_id = 0
     message_length = 5
-    last_event_id1 = math.floor(last_event/math.pow(2,16))
-    last_event_id0 = int(last_event - last_event_id1*math.pow(2,16))
+    last_event_id1 = last_event//65536
+    last_event_id0 = last_event - last_event_id1*65536
     code = '!BHBH' + 'BBBH'
     data = struct.pack(code, message_type, seq_number, server_id, message_length, status_code, user_id, last_event_id1, last_event_id0)
     return data
@@ -105,13 +105,13 @@ def CODE_EVENT(event_type, event_id,room_id,user_id, message) :
     event_id0 = event_id - event_id1*65536  
       
     if event_type == 0x01 :
-        message_length = len(message)
+        message_length = len(message.encode('utf-8'))
         code = '!BH' + 'BBBH' +  str(message_length) + 's'
         
         data = struct.pack(code, event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))   
         
     elif event_type == 0x02 :
-         message_length = len(message)
+         message_length = len(message.encode('utf-8'))
          code = '!BH' + 'BBBB' + str(message_length) + 's'
          data=struct.pack(code,event_id1, event_id0, event_type, room_id, user_id,message_length,message.encode('utf-8'))
        
@@ -149,8 +149,8 @@ def RESPONSE_EVENTS(seq_number, user_id, nbr_events, events_list) :
     data = struct.pack(code, message_type, seq_number, user_id, message_length, nbr_events)
     for i in range(len(events_list)) :
         event_id = events_list[i][0]
-        event_id1 = math.floor(event/math.pow(2,16))
-        event_id0 = last_event - event_id1*math.pow(2,16)
+        event_id1 = event//65536
+        event_id0 = last_event - event_id1*65536
         code = '!BHBBB'
         if events_list[i][1] == 1 :
             code += 'H' + str(events_list[i][4]) + 's'
@@ -187,7 +187,7 @@ def RESPONSE_ROOMS(seq_number,user_id,rooms_list,n_users_room):
     list_length = 0;
 
     for rooms in rooms_list:
-        room_length = len(rooms.movieTitle);
+        room_length = len(rooms.movieTitle.encode('utf-8'));
         list_length = list_length + 9 + room_length;
 
     message_length = list_length + 1;
@@ -203,12 +203,12 @@ def RESPONSE_ROOMS(seq_number,user_id,rooms_list,n_users_room):
         port_number = rooms_list[i].moviePort;
         name = rooms_list[i].movieTitle;
         nbr_users = n_users_room[i];
-        room_name_length = len(name);
+        room_name_length = len(name.encode('utf-8'));
 
         if i == 0:
             offset = 7;
         else:
-            offset = offset + 9 + len(rooms_list[i-1].movieTitle);
+            offset = offset + 9 + len(rooms_list[i-1].movieTitle.encode('utf-8'));
 
         code = '!B'+'BBBB'+'HB'+ str(room_name_length) + 's' + 'B';
         struct.pack_into(code,data,offset,room_id,ip_number[0],ip_number[1],ip_number[2],ip_number[3],port_number,room_name_length,name.encode('utf-8'),nbr_users);
@@ -236,7 +236,7 @@ def RESPONSE_USERS(seq_number,user_id,users_list, server):
     list_length = 0;
 
     for user in users_list:
-        user_length = len(user.userName);
+        user_length = len(user.userName.encode('utf-8'));
         list_length = list_length + 3 + user_length;
 
     message_length = list_length + 1;
@@ -254,13 +254,13 @@ def RESPONSE_USERS(seq_number,user_id,users_list, server):
         else :
             room_id = server.getMovieByTitle(users_list[i].userChatRoom).movieId;
             
-        user_length = len(users_list[i].userName);
+        user_length = len(username.encode('utf-8'));
 
         if i == 0:
             offset = 7; 
         else:
 
-            offset = offset + 3 + len(users_list[i-1].userName);        
+            offset = offset + 3 + len(users_list[i-1].userName.encode('utf-8'));        
 
         code = '!BB'+ str(user_length) + 's' + 'B';
         struct.pack_into(code,data,offset,user_id,user_length,username.encode('utf-8'),room_id);
@@ -298,7 +298,7 @@ def RESPONSE_SWITCH_ROOM(seq_number,user_id,status_code):
 def PUT_NEW_MESSAGE(seq_number,user_id,room_id,message):
     
     message_type = 14
-    message2_length = len(message)
+    message2_length = len(message.encode('utf-8'))
     message1_length = 3 + message2_length
 
     code = '!BHBH' + 'BH' + str(message2_length) + 's'

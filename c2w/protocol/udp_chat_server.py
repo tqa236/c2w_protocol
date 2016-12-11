@@ -80,6 +80,12 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
     
+    def incrementSeqNumber(self, key) :
+        if self.seq_number_users[key][0] >= 65536 :
+            self.seq_number_users[key][0] = 0
+        else :
+            self.seq_number_users[key][0] = self.seq_number_users[key][0] + 1
+    
 ###########
         
     def addEvent(self, event_type, user_id, content):
@@ -339,7 +345,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                     if message_type == 0x02 :                                                           # On a reçu le message de logout
                         if self.serverProxy.getUserById(user_id) :                                      # On vérifie si il y a le user sur la base de données                        
                             self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements
-                            self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1   # On incrémente le seq_number du user                       
+                            self.incrementSeqNumber(host_port)   # On incrémente le seq_number du user                       
                             self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName) # On supprime le user (On doit faire ça après addEvent)
                             packet = packing.RESPONSE_LOGOUT(seq_number,server_id,0x00)                 # On fait le paquet 
                             self.seq_number_users[host_port][1] = packet                                  # On enregistre le paquet
@@ -356,7 +362,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                 ########### PING REQUEST / RESPONSE_PING
                     if message_type == 0x04 :                                                       # On a reçu le message de get_ping
                         packet = packing.RESPONSE_PING(seq_number, server_id, self.last_event_ID)   # On fait le paquet avec last_event_ID courrant
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1   # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port)   # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                  # On enregistre le paquet
                         self.transport.write(packet, host_port)      
                 
@@ -374,7 +380,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, server_id, real_events_number,message_length) # le packet binaire avec le message head
                         packet = packet_head + packet_content       # On additionne les deux packet binaires                               
                         
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1   # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port)   # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                  # On enregistre le paquet
                         
                         self.transport.write(packet, host_port)
@@ -389,7 +395,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         
                         packet = packing.RESPONSE_ROOMS(seq_number, server_id, movie_list, n_users_room_list) # On fait le paquet
                         
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1           # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port)          # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                          # On enregistre le paquet
                         self.transport.write(packet, host_port)                                             # On envoie le paquet  
                 
@@ -403,7 +409,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         
                         packet = packing.RESPONSE_USERS(seq_number, server_id, user_list,self.serverProxy)            # On fait le paquet
                         
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1  # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port) # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                 # On enregistre le paquet
                         self.transport.write(packet, host_port)                                    # On envoie le paquet            
                     
@@ -440,7 +446,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                             else :
                                 packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)    # On fait le paquet
                                 
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1   # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port)   # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                  # On enregistre le paquet  
                         self.transport.write(packet, host_port)                                     # On envoie le paquet                            
                 
@@ -468,7 +474,7 @@ class c2wUdpChatServerProtocol(DatagramProtocol):
                         else:                                                                         # On ne sait pas ce que se passe
                             packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x01)          # On fait le paquet
                         
-                        self.seq_number_users[host_port][0] = self.seq_number_users[host_port][0] + 1     # On incrémente le seq_number du user
+                        self.incrementSeqNumber(host_port)    # On incrémente le seq_number du user
                         self.seq_number_users[host_port][1] = packet                                    # On enregistre le paquet  
                         self.transport.write(packet, host_port)                                       # On envoie le paquet
                             

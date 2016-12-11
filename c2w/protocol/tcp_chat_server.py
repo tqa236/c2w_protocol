@@ -81,6 +81,12 @@ s
         self.delay_to_disconnect = 60   
 
 
+    def incrementSeqNumber(self) :
+        if self.seq_number >= 65536 :
+            self.seq_number = 0
+        else :
+            self.seq_number = self.seq_number + 1
+        
 ###########
         
     def addEvent(self, event_type, user_id, content):
@@ -347,7 +353,7 @@ s
                 if message_type == 0x02 :                                                           # On a reçu le message de logout
                     if self.serverProxy.getUserById(user_id) :                                      # On vérifie si il y a le user sur la base de données                        
                         self.addEvent(0x04, user_id, None)                                          # On ajoute le logout à les événements
-                        self.seq_number = self.seq_number + 1   # On incrémente le seq_number du user                       
+                        self.incrementSeqNumber()   # On incrémente le seq_number du user                       
                         self.serverProxy.removeUser(self.serverProxy.getUserById(user_id).userName) # On supprime le user (On doit faire ça après addEvent)
                         packet = packing.RESPONSE_LOGOUT(seq_number,server_id,0x00)                 # On fait le paquet 
                         self.lastPacket = packet                                  # On enregistre le paquet
@@ -364,7 +370,7 @@ s
             ########### PING REQUEST / RESPONSE_PING
                 if message_type == 0x04 :                                                       # On a reçu le message de get_ping
                     packet = packing.RESPONSE_PING(seq_number, server_id, c2wTcpChatServerProtocol.last_event_ID)   # On fait le paquet avec last_event_ID courrant
-                    self.seq_number = self.seq_number + 1   # On incrémente le seq_number du user
+                    self.incrementSeqNumber()   # On incrémente le seq_number du user
                     self.lastPacket = packet                                  # On enregistre le paquet
                     self.transport.write(packet)      
             
@@ -382,7 +388,7 @@ s
                     packet_head = packing.RESPONSE_EVENTS_HEAD(seq_number, server_id, real_events_number,message_length) # le packet binaire avec le message head
                     packet = packet_head + packet_content       # On additionne les deux packet binaires                               
                     
-                    self.seq_number = self.seq_number + 1   # On incrémente le seq_number du user
+                    self.incrementSeqNumber()   # On incrémente le seq_number du user
                     self.lastPacket = packet                                  # On enregistre le paquet
                     
                     self.transport.write(packet)
@@ -397,7 +403,7 @@ s
                     
                     packet = packing.RESPONSE_ROOMS(seq_number, server_id, movie_list, n_users_room_list) # On fait le paquet
                     
-                    self.seq_number = self.seq_number + 1           # On incrémente le seq_number du user
+                    self.incrementSeqNumber()           # On incrémente le seq_number du user
                     self.lastPacket = packet                                          # On enregistre le paquet
                     self.transport.write(packet)                                             # On envoie le paquet  
             
@@ -411,7 +417,7 @@ s
                     
                     packet = packing.RESPONSE_USERS(seq_number, server_id, user_list,self.serverProxy)            # On fait le paquet
                     
-                    self.seq_number = self.seq_number + 1  # On incrémente le seq_number du user
+                    self.incrementSeqNumber()  # On incrémente le seq_number du user
                     self.lastPacket = packet                                 # On enregistre le paquet
                     self.transport.write(packet)                                    # On envoie le paquet            
                 
@@ -448,7 +454,7 @@ s
                         else :
                             packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)    # On fait le paquet
                             
-                    self.seq_number = self.seq_number + 1   # On incrémente le seq_number du user
+                    self.incrementSeqNumber()   # On incrémente le seq_number du user
                     self.lastPacket = packet                                  # On enregistre le paquet  
                     self.transport.write(packet)                                     # On envoie le paquet                            
             
@@ -476,7 +482,7 @@ s
                     else:                                                                         # On ne sait pas ce que se passe
                         packet = packing.RESPONSE_NEW_MESSAGE(seq_number, server_id, 0x01)          # On fait le paquet
                     
-                    self.seq_number = self.seq_number + 1     # On incrémente le seq_number du user
+                    self.incrementSeqNumber()    # On incrémente le seq_number du user
                     self.lastPacket = packet                                    # On enregistre le paquet  
                     self.transport.write(packet)                                       # On envoie le paquet
                             

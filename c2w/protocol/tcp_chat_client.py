@@ -81,6 +81,11 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
         self.store.addMovie(ROOM_IDS.MAIN_ROOM, '0.0.0.0', '0', 0)
         
 
+    def incrementSeqNumber(self) :
+        if self.seq_number >= 65536 :
+            self.seq_number = 0
+        else :
+            self.seq_number = self.seq_number + 1
 
     def connectionLost(self, reason) :
         """
@@ -277,7 +282,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                 reactor.callLater(0.5, self.dataReceived, b'')
             if fieldsList[0][0] == self.packet_awaited and fieldsList[0][1] == self.seq_number : #Failsafe condition, in the case of packet arriving in incorrect order
                 self.packet_awaited = 16
-                self.seq_number += 1
+                self.incrementSeqNumber()
                 
                 ########### RESPONSE_LOGIN
                 if fieldsList[0][0] == 1 :          
@@ -338,7 +343,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                             self.lastEventID = fieldsList[1][i][0]
                             
                             user = self.store.getUserById(fieldsList[1][i][3])
-                            if user.userChatRoom == self.userRoomID and user.userId != self.userID:
+                            if user.userChatRoom == self.userRoomID and user.userId != self.userID :
                                 self.clientProxy.chatMessageReceivedONE(user.userName, fieldsList[1][i][4])
                             
                         elif fieldsList[1][i][1] == 2 : #New user event

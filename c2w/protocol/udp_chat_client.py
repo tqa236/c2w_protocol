@@ -94,6 +94,13 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
         """
         self.transport = LossyTransport(self.transport, self.lossPr)
         DatagramProtocol.transport = self.transport
+        
+        
+    def incrementSeqNumber(self) :
+        if self.seq_number >= 65536 :
+            self.seq_number = 0
+        else :
+            self.seq_number = self.seq_number + 1
 
 
 ########### The function that resends packets whenever the timer runs out.
@@ -304,7 +311,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
             self.packet_stored = 0
             self.packet_awaited = 16
             self.resendTries = 0
-            self.seq_number += 1
+            self.incrementSeqNumber()
             
             ########### RESPONSE_LOGIN OK
             if fieldsList[0][0] == 1 :          
@@ -428,7 +435,7 @@ class c2wUdpChatClientProtocol(DatagramProtocol):
                 print('Room status : UI has been updated')
                 
                 print('Room status : UI is ready, starting ping cycle')
-                self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE) #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
                     
                                    
 
