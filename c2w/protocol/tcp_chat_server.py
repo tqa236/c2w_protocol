@@ -420,18 +420,22 @@ s
                     username = self.serverProxy.getUserById(user_id).userName                   # Le nom d'usager
                     old_room = self.serverProxy.getUserById(user_id).userChatRoom               # L'ancienne room
                     new_room = fieldsList[1][0]                                                 # la nouvelle room
+                    new_room_title = ''
                     
                     if new_room == 0  :                                                         # Si nous sommes dans la MAIN ROOM
-                        new_room = c2w.main.constants.ROOM_IDS.MAIN_ROOM
+                        new_room_title = c2w.main.constants.ROOM_IDS.MAIN_ROOM
                     else :
-                        new_room = self.serverProxy.getMovieById(new_room).movieTitle
+                        if  self.serverProxy.getMovieById(new_room) is not None :  
+                            new_room_title = self.serverProxy.getMovieById(new_room).movieTitle
+                        else : 
+                            new_room_title = None
                         
                     if old_room == c2w.main.constants.ROOM_IDS.MAIN_ROOM :
                         old_room = 0
                     else :
                         old_room = self.serverProxy.getMovieByTitle(old_room).movieId
                     
-                    if new_room != c2w.main.constants.ROOM_IDS.MAIN_ROOM and self.serverProxy.getMovieByTitle(new_room) is None :
+                    if new_room_title != c2w.main.constants.ROOM_IDS.MAIN_ROOM or new_room_title is None :
                         # Il existe pas le movie room (manque le bon code)                        
                         packet = packing.RESPONSE_SWITCH_ROOM(seq_number, server_id, 0x01)        # On fait le paquet 
                     
