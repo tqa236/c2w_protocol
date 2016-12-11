@@ -404,7 +404,7 @@ class c2wTcpChatClientProtocol(DatagramProtocol):
                 print('Room status : UI has been updated')
                 
                 print('Room status : UI is ready, starting ping cycle')
-                self.sendGetPingRequestOIE() #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
+                reactor.callLater(self.pingTimer, self.sendGetPingRequestOIE) #Then starts the Ping - Pong - GetEvents - ResponseEvents - Ping cycle
                     
                                    
 

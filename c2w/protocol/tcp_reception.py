@@ -3,9 +3,9 @@ import struct
 
 def framing(frame) :
 
-    messageLength = 65536
-    if frame is None :
-        messageLength = 65536    
+    messageLength = 65537
+    if frame == b'' :
+        messageLength = 65537    
     else :
         if len(frame) >= 6:
             header = frame[:6]
